@@ -28,6 +28,7 @@ import {
   isDescendantFolder,
 } from './store.js';
 import { createDnd } from './tree.js';
+import { t } from './i18n.js';
 
 export function createCollectionTab(ctx) {
   const { state } = ctx;
@@ -61,7 +62,7 @@ export function createCollectionTab(ctx) {
         data,
         id: 'all',
         kind: 'col-all',
-        name: '全部收藏',
+        name: t('collection.all'),
         count: data.items.length,
         active: state.folderId === 'all',
         ico: icon('inbox', 15),
@@ -86,9 +87,9 @@ export function createCollectionTab(ctx) {
     rail.append(
       h(
         'button',
-        { class: 'rail-add', title: '在顶层新建文件夹', onclick: () => newFolderDialog(null) },
+        { class: 'rail-add', title: t('collection.topFolder'), onclick: () => newFolderDialog(null) },
         icon('folderPlus', 14),
-        '新建文件夹'
+        t('collection.addFolder')
       )
     );
   }
@@ -177,8 +178,8 @@ export function createCollectionTab(ctx) {
           items.push(
             { sep: true },
             { label: '重命名', icon: 'edit', onClick: () => renameFolderDialog(id) },
-            { label: '移动到…', icon: 'swap', onClick: () => moveFolderPicker(id) },
-            { label: '删除', icon: 'trash', danger: true, onClick: () => deleteFolderDialog(id) }
+            { label: t('collection.moveTo'), icon: 'swap', onClick: () => moveFolderPicker(id) },
+            { label: t('button.delete'), icon: 'trash', danger: true, onClick: () => deleteFolderDialog(id) }
           );
         }
         contextMenu(e.clientX, e.clientY, items);
@@ -229,11 +230,11 @@ export function createCollectionTab(ctx) {
       return;
     }
     if (pinned.length) {
-      scroll.append(sectionLabel(icon('pin', 13), '置顶'));
+      scroll.append(sectionLabel(icon('pin', 13), t('button.pin')));
       pinned.forEach((it) => scroll.append(card(it, data, sorted)));
     }
     if (rest.length) {
-      if (pinned.length && !custom) scroll.append(sectionLabel(icon('clock', 13), '最近收藏'));
+      if (pinned.length && !custom) scroll.append(sectionLabel(icon('clock', 13), t('collection.recent')));
       rest.forEach((it) => scroll.append(card(it, data, sorted)));
     }
   }
@@ -257,7 +258,7 @@ export function createCollectionTab(ctx) {
     const selectionToolbar = selectionMode ? h('span', { class: 'selection-toolbar' },
       h('span', { class: 'selection-count', text: `已选 ${selectedItems.size}` }),
       h('button', { class: 'text-btn', onclick: () => selectVisible(data) }, '全选'),
-      h('button', { class: 'text-btn', onclick: () => { selectedItems.clear(); renderAll(); } }, '清除')
+      h('button', { class: 'text-btn', onclick: () => { selectedItems.clear(); renderAll(); } }, t('button.clearShort'))
     ) : null;
     const headerChildren = [
       h(
@@ -283,9 +284,9 @@ export function createCollectionTab(ctx) {
         { class: 'seg' },
         h('button', {
           class: `seg-btn${!custom ? ' active' : ''}`,
-          title: '按收藏时间排序',
+          title: t('collection.timeSortTitle'),
           onclick: () => setSortMode('time'),
-        }, icon('clock', 13), '时间'),
+        }, icon('clock', 13), t('collection.time')),
         h('button', {
           class: `seg-btn${custom ? ' active' : ''}`,
           title: '按自定义顺序（拖拽）排序',
@@ -363,7 +364,7 @@ export function createCollectionTab(ctx) {
       chips.append(chip);
     }
     if (state.tagFilter.size) {
-      const clear = h('button', { class: 'tag-chip clear', title: '清除标签筛选' }, icon('close', 12), '清除');
+      const clear = h('button', { class: 'tag-chip clear', title: t('collection.clearTagFilter') }, icon('close', 12), t('button.clearShort'));
       clear.addEventListener('click', () => {
         state.tagFilter.clear();
         renderAll();
@@ -397,7 +398,7 @@ export function createCollectionTab(ctx) {
       dataset: { id: item.id, kind: 'col-item' },
     });
     const actions = h('span', { class: 'row-actions card-actions' }, h('span', { class: 'flex1' }),
-      actBtn('pin', item.pinned ? '取消置顶' : '置顶', () => togglePin(item)),
+      actBtn('pin', item.pinned ? t('button.unpin') : t('button.pin'), () => togglePin(item)),
       actBtn('edit', '编辑', () => editItemDialog(item)),
       actBtn('swap', '剪切到文件夹', () => moveItemPicker(item)),
       actBtn('trash', '删除', () => deleteItem(item))
@@ -454,12 +455,12 @@ export function createCollectionTab(ctx) {
     row.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       contextMenu(e.clientX, e.clientY, [
-        { label: '在新标签页打开', icon: 'open', onClick: () => openUrl(item.url, { ctrlKey: true }) },
-        { label: '编辑', icon: 'edit', onClick: () => editItemDialog(item) },
-        { label: item.pinned ? '取消置顶' : '置顶', icon: 'pin', onClick: () => togglePin(item) },
-        { label: '移动到…', icon: 'swap', onClick: () => moveItemPicker(item) },
+        { label: t('collection.openNewTab'), icon: 'open', onClick: () => openUrl(item.url, { ctrlKey: true }) },
+        { label: t('button.edit'), icon: 'edit', onClick: () => editItemDialog(item) },
+        { label: item.pinned ? t('button.unpin') : t('button.pin'), icon: 'pin', onClick: () => togglePin(item) },
+        { label: t('collection.moveTo'), icon: 'swap', onClick: () => moveItemPicker(item) },
         { sep: true },
-        { label: '删除', icon: 'trash', danger: true, onClick: () => deleteItem(item) },
+        { label: t('button.delete'), icon: 'trash', danger: true, onClick: () => deleteItem(item) },
       ]);
     });
     return row;
@@ -471,9 +472,9 @@ export function createCollectionTab(ctx) {
         'div',
         { class: 'empty' },
         h('div', { class: 'empty-ico' }, icon('bookmark', 40)),
-        h('div', { class: 'empty-title', text: '还没有收藏' }),
-        h('div', { class: 'empty-hint', text: '按 Ctrl+Shift+S，或点击右上角 ＋ 一键收藏当前网页' }),
-        h('button', { class: 'btn btn-primary', onclick: () => ctx.collectCurrent() }, icon('plus', 14), '收藏当前页')
+        h('div', { class: 'empty-title', text: t('collection.empty') }),
+        h('div', { class: 'empty-hint', text: t('collection.emptyHint') }),
+        h('button', { class: 'btn btn-primary', onclick: () => ctx.collectCurrent() }, icon('plus', 14), t('collection.collectCurrent'))
       );
     }
     if (state.tagFilter.size) {
@@ -481,11 +482,11 @@ export function createCollectionTab(ctx) {
         'div',
         { class: 'empty' },
         h('div', { class: 'empty-ico' }, icon('search', 36)),
-        h('div', { class: 'empty-title', text: '没有符合条件的收藏' }),
+        h('div', { class: 'empty-title', text: t('collection.noMatch') }),
         h(
           'button',
           { class: 'btn btn-ghost', onclick: () => { state.tagFilter.clear(); renderAll(); } },
-          '清除标签筛选'
+          t('collection.clearTagFilter')
         )
       );
     }
@@ -493,8 +494,8 @@ export function createCollectionTab(ctx) {
       'div',
       { class: 'empty' },
       h('div', { class: 'empty-ico' }, icon('folder', 36)),
-      h('div', { class: 'empty-title', text: '此文件夹暂无收藏' }),
-      h('div', { class: 'empty-hint', text: '把收藏条目拖到左侧文件夹上即可移动' })
+      h('div', { class: 'empty-title', text: t('collection.folderEmpty') }),
+      h('div', { class: 'empty-hint', text: t('collection.folderEmptyHint') })
     );
   }
 
@@ -503,19 +504,19 @@ export function createCollectionTab(ctx) {
   async function togglePin(item) {
     await setItemPinned(item.id, !item.pinned);
     await ctx.refresh();
-    toast(item.pinned ? '已取消置顶' : '已置顶');
+    toast(item.pinned ? t('collection.unpin') : t('collection.pin'));
   }
 
   async function deleteItem(item) {
     const ok = await confirmDialog({
-      title: '删除收藏',
-      message: `删除「${item.title || item.url}」？（不影响 Chrome 书签）`,
-      okLabel: '删除',
+      title: t('collection.deleteTitle'),
+      message: t('collection.deleteMessage', { TITLE: item.title || item.url }),
+      okLabel: t('button.delete'),
     });
     if (!ok) return;
     await removeItem(item.id);
     await ctx.refresh();
-    toast('已删除');
+    toast(t('collection.deleted'));
   }
 
   function moveItemPicker(item) {
@@ -523,7 +524,7 @@ export function createCollectionTab(ctx) {
     const m = h('div', { class: 'picker' });
     let modalApi;
     const options = [
-      { id: UNCATEGORIZED_ID, name: '未分类', depth: 0 },
+      { id: UNCATEGORIZED_ID, name: t('collection.uncategorized'), depth: 0 },
       ...flattenFolders(data.folders),
     ];
     for (const f of options) {
@@ -539,12 +540,12 @@ export function createCollectionTab(ctx) {
         modalApi.close();
         await moveItem(item.id, { folderId: f.id });
         await ctx.refresh();
-        toast(`已移动到「${f.name}」`);
+        toast(t('collection.movedTo', { TITLE: f.name }));
       });
       m.append(row);
     }
     modalApi = showModal({
-      title: `移动「${item.title || item.url}」到…`,
+      title: t('collection.moveTitle', { TITLE: item.title || item.url }),
       body: m,
       buttons: [{ label: '取消', kind: 'ghost' }],
     });
@@ -570,11 +571,11 @@ export function createCollectionTab(ctx) {
       if (o.value === item.folderId) opt.selected = true;
       folderSelect.append(opt);
     }
-    const noteInput = h('textarea', { rows: 4, placeholder: '记录为什么收藏、关键内容…' });
+    const noteInput = h('textarea', { rows: 4, placeholder: t('collection.reasonPlaceholder') });
     noteInput.value = item.note || '';
 
     const chipWrap = h('div', { class: 'chip-editor' });
-    const tagInput = h('input', { type: 'text', placeholder: '输入标签，回车添加', list: 'tag-suggest', spellcheck: 'false' });
+    const tagInput = h('input', { type: 'text', placeholder: t('collection.tagsPlaceholder'), list: 'tag-suggest', spellcheck: 'false' });
     const dl = h('datalist', { id: 'tag-suggest' });
     for (const t of allTags) dl.append(h('option', { value: t }));
     chipWrap.append(dl);
@@ -586,7 +587,7 @@ export function createCollectionTab(ctx) {
           'span',
           { class: 'chip' },
           `#${t}`,
-          h('button', { class: 'chip-x', title: '移除' }, icon('close', 11))
+          h('button', { class: 'chip-x', title: t('collection.remove') }, icon('close', 11))
         );
         chip.querySelector('.chip-x').addEventListener('click', () => {
           tags.splice(tags.indexOf(t), 1);
@@ -613,15 +614,15 @@ export function createCollectionTab(ctx) {
     const body = h(
       'div',
       { class: 'form' },
-      formField('标题', titleInput),
-      formField('网址', urlInput),
-      formField('文件夹', folderSelect),
-      formField('标签', chipWrap),
-      formField('备注', noteInput)
+      formField(t('collection.title'), titleInput),
+      formField(t('collection.url'), urlInput),
+      formField(t('collection.folder'), folderSelect),
+      formField(t('collection.tags'), chipWrap),
+      formField(t('collection.note'), noteInput)
     );
 
     showModal({
-      title: '编辑收藏',
+      title: t('collection.editTitle'),
       body,
       buttons: [
         {
@@ -665,15 +666,15 @@ export function createCollectionTab(ctx) {
 
   async function newFolderDialog(parentId) {
     const v = await formDialog({
-      title: parentId ? '新建子文件夹' : '新建文件夹',
-      fields: [{ key: 'name', label: '名称', value: '', placeholder: '文件夹名称' }],
-      validate: (vals) => (vals.name ? null : '名称不能为空'),
+      title: parentId ? '新建子文件夹' : t('collection.addFolder'),
+      fields: [{ key: 'name', label: t('dialog.name'), value: '', placeholder: t('bookmarks.folderName') }],
+      validate: (vals) => (vals.name ? null : t('bookmarks.nameRequired')),
     });
     if (!v) return;
     const folder = await addFolder(v.name, parentId);
     state.colExpanded.add(parentId || folder.id);
     await ctx.refresh();
-    toast('已创建文件夹');
+    toast(t('collection.created'));
   }
 
   async function renameFolderDialog(id) {
@@ -681,9 +682,9 @@ export function createCollectionTab(ctx) {
     const f = data.folders.find((x) => x.id === id);
     if (!f) return;
     const v = await formDialog({
-      title: '重命名文件夹',
-      fields: [{ key: 'name', label: '名称', value: f.name }],
-      validate: (vals) => (vals.name ? null : '名称不能为空'),
+      title: t('collection.renameFolder'),
+      fields: [{ key: 'name', label: t('dialog.name'), value: f.name }],
+      validate: (vals) => (vals.name ? null : t('bookmarks.nameRequired')),
     });
     if (!v) return;
     await renameFolder(id, v.name);
@@ -696,21 +697,21 @@ export function createCollectionTab(ctx) {
     const f = data.folders.find((x) => x.id === id);
     if (!f) return;
     if (f.system) {
-      toast('「未分类」不能删除', 'error');
+      toast(t('collection.cannotDeleteUncategorized'), 'error');
       return;
     }
     const doomed = collectDescendants(data, id);
     const n = data.items.filter((it) => doomed.has(it.folderId)).length;
     const ok = await confirmDialog({
-      title: '删除文件夹',
-      message: `删除文件夹「${f.name}」？其中 ${n} 个收藏将移入「未分类」，子文件夹将一并删除。`,
-      okLabel: '删除',
+      title: t('collection.deleteFolder'),
+      message: t('collection.deleteFolderMessage', { TITLE: f.name, COUNT: n }),
+      okLabel: t('button.delete'),
     });
     if (!ok) return;
     await removeFolder(id);
     if (doomed.has(state.folderId)) state.folderId = 'all';
     await ctx.refresh();
-    toast('已删除');
+    toast(t('collection.deleted'));
   }
 
   function collectDescendants(data, id) {
@@ -761,12 +762,12 @@ export function createCollectionTab(ctx) {
         await moveFolder(id, { parentId: f.id });
         state.colExpanded.add(f.id);
         await ctx.refresh();
-        toast(`已移动到「${f.name}」`);
+        toast(t('collection.movedTo', { TITLE: f.name }));
       });
       m.append(row);
     }
     modalApi = showModal({
-      title: '移动文件夹到…',
+      title: t('collection.moveTo'),
       body: m,
       buttons: [{ label: '取消', kind: 'ghost' }],
     });
@@ -812,7 +813,7 @@ export function createCollectionTab(ctx) {
         if (!target) return;
         if (ctx.getData().settings.sortMode !== 'custom') {
           await updateSettings({ sortMode: 'custom' });
-          toast('已切换为自定义排序');
+          toast(t('collection.customSort'));
         }
         const ordered = zone === 'before' ? [...ids].reverse() : ids;
         for (const id of ordered) {
@@ -847,11 +848,11 @@ export function createCollectionTab(ctx) {
         if (row.dataset.kind === 'col-all') return;
         await moveItem(drag.id, { folderId: row.dataset.id });
         await ctx.refresh();
-        toast(`已移动到「${nameOf(row.dataset.id, ctx.getData())}」`);
+        toast(t('collection.movedTo', { TITLE: nameOf(row.dataset.id, ctx.getData()) }));
         return;
       }
       if (zone === 'into') {
-        if (row.dataset.system === '1') throw new Error('不能移入「未分类」');
+        if (row.dataset.system === '1') throw new Error(t('collection.cannotMoveUncategorized'));
         await moveFolder(drag.id, { parentId: row.dataset.id });
         state.colExpanded.add(row.dataset.id);
       } else {

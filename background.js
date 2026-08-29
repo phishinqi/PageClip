@@ -9,6 +9,7 @@ import {
   ensureDataInitialized,
   pruneRecycleBin,
 } from './js/store.js';
+import { initI18n, t, getMessages } from './js/i18n.js';
 
 const DEFAULT_TITLE = '打开 PageClip 侧边栏';
 
@@ -44,51 +45,47 @@ function getCurrentTab() {
 
 async function captureCurrent(kind, source) {
   const tab = source || await getCurrentTab();
-  if (!tab || !tab.url) return flashBadge('deny', '无法读取当前页面');
-  if (!isCollectableUrl(tab.url)) return flashBadge('deny', '系统页面无法加入 PageClip');
+  if (!tab || !tab.url) return flashBadge('deny', t('error.readPage'));
+  if (!isCollectableUrl(tab.url)) return flashBadge('deny', t('error.systemAdd'));
   const payload = { url: tab.url, title: tab.title || tab.url, favIconUrl: tab.favIconUrl || '' };
   if (kind === 'quick') await addQuickItem(payload);
   else if (kind === 'inbox') await addInboxItem(payload);
   else await collectIntoStorage(payload);
-  flashBadge('ok', kind === 'quick' ? '已加入快捷收藏夹' : kind === 'inbox' ? '已加入 Inbox' : '已收藏');
+  flashBadge('ok', kind === 'quick' ? t('toast.quickAdded') : kind === 'inbox' ? t('toast.inboxAdded') : t('toast.saved'));
 }
 
-function createMenus() {
+async function createMenus() {
   const menus = chrome.contextMenus;
   if (!menus || typeof menus.create !== 'function') return;
+  await initI18n({ refresh: true });
   const create = () => {
-    menus.create({ id: 'pageclip-quick', title: '加入 PageClip 快捷收藏夹', contexts: ['page', 'tab'] });
-    menus.create({ id: 'pageclip-inbox', title: '加入 PageClip Inbox', contexts: ['page', 'tab'] });
-    menus.create({ id: 'pageclip-reading', title: '同步到 Chrome Reading List', contexts: ['page', 'tab', 'link'] });
-    menus.create({ id: 'pageclip-toggle', title: '打开/关闭 PageClip 网页侧栏', contexts: ['page', 'tab'] });
+    menus.create({ id: 'pageclip-quick', title: t('menu.quick'), contexts: ['page', 'tab'] });
+    menus.create({ id: 'pageclip-inbox', title: t('menu.inbox'), contexts: ['page', 'tab'] });
+    menus.create({ id: 'pageclip-reading', title: t('menu.reading'), contexts: ['page', 'tab', 'link'] });
+    menus.create({ id: 'pageclip-toggle', title: t('menu.toggle'), contexts: ['page', 'tab'] });
   };
-  try {
-    const removed = typeof menus.removeAll === 'function' ? menus.removeAll() : null;
-    Promise.resolve(removed).catch(() => {}).finally(create);
-  } catch {
-    create();
-  }
+  try { const removed = typeof menus.removeAll === 'function' ? menus.removeAll() : null; await Promise.resolve(removed).catch(() => {}); create(); } catch { create(); }
 }
-
 async function syncReadingList(url, title) {
-  if (!chrome.readingList?.addEntry || !chrome.permissions?.request) throw new Error('当前浏览器不支持 Chrome Reading List');
+  if (!chrome.readingList?.addEntry || !chrome.permissions?.request) throw new Error(t('error.readingUnsupported'));
   const has = chrome.permissions.contains ? await chrome.permissions.contains({ permissions: ['readingList'] }) : false;
-  if (!has && !(await chrome.permissions.request({ permissions: ['readingList'] }))) throw new Error('未授予 Reading List 权限');
+  if (!has && !(await chrome.permissions.request({ permissions: ['readingList'] }))) throw new Error(t('error.permissionDenied'));
   await chrome.readingList.addEntry({ url, title: title || url, hasBeenRead: false });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
   configureSidePanel().catch(() => {});
   ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
+  initI18n().catch(() => {});
   chrome.alarms?.create?.('pageclip-prune-recycle', { periodInMinutes: 24 * 60 });
-  createMenus();
+  createMenus().catch(() => {});
 });
 
 chrome.runtime.onStartup.addListener(() => {
   configureSidePanel().catch(() => {});
   ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
   chrome.alarms?.create?.('pageclip-prune-recycle', { periodInMinutes: 24 * 60 });
-  createMenus();
+  createMenus().catch(() => {});
 });
 
 chrome.alarms?.onAlarm?.addListener((alarm) => {
@@ -97,6 +94,7 @@ chrome.alarms?.onAlarm?.addListener((alarm) => {
 
 chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
   try {
+    await initI18n();
     const url = info.linkUrl || info.pageUrl || tab?.url;
     const source = url ? { url, title: tab?.title || url, favIconUrl: tab?.favIconUrl || '' } : tab;
     if (info.menuItemId === 'pageclip-toggle') {
@@ -105,12 +103,12 @@ chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
     }
     if (info.menuItemId === 'pageclip-reading') {
       await syncReadingList(source.url, source.title);
-      flashBadge('ok', '已同步到 Chrome Reading List');
+      flashBadge('ok', t('toast.readingAdded'));
       return;
     }
     await captureCurrent(info.menuItemId === 'pageclip-quick' ? 'quick' : 'inbox', source);
   } catch (err) {
-    flashBadge('deny', err.message || String(err));
+    flashBadge('deny', t('error.operation', { ERROR: err.message || String(err) }));
   }
 });
 
@@ -125,30 +123,36 @@ chrome.action.onClicked.addListener(async () => {
   }
 });
 
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.bc_data?.newValue?.settings?.uiLocale !== changes.bc_data?.oldValue?.settings?.uiLocale) createMenus().catch(() => {});
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message?.type || !['capture-current', 'capture-quick', 'capture-inbox', 'sync-reading', 'open-manager', 'open-settings'].includes(message.type)) return false;
+  if (!message?.type || !['capture-current', 'capture-quick', 'capture-inbox', 'sync-reading', 'open-manager', 'open-settings', 'get-i18n-messages'].includes(message.type)) return false;
   (async () => {
+    if (message.type === 'get-i18n-messages') return { ok: true, locale: message.locale, messages: getMessages(message.locale) };
     const payload = message.payload || sender.tab || await getCurrentTab();
     if (message.type === 'open-manager' || message.type === 'open-settings') {
       await openFallbackPage(message.type === 'open-settings');
-      return { ok: true, message: message.type === 'open-settings' ? '已打开 PageClip 设置' : '已打开 PageClip' };
+      return { ok: true, message: message.type === 'open-settings' ? t('content.openSettings') : t('content.openManager') };
     }
-    if (!payload?.url) throw new Error('无法读取当前页面');
+    if (!payload?.url) throw new Error(t('error.readPage'));
     if (message.type === 'sync-reading') {
       await syncReadingList(payload.url, payload.title);
-      return { ok: true, message: '已同步到 Chrome Reading List' };
+      return { ok: true, message: t('toast.readingAdded') };
     }
     await captureCurrent(
       message.type === 'capture-current' ? 'collect' : message.type === 'capture-quick' ? 'quick' : 'inbox',
       payload
     );
-    return { ok: true, message: message.type === 'capture-quick' ? '已加入快捷收藏夹' : message.type === 'capture-inbox' ? '已加入 Inbox' : '已收藏' };
+    return { ok: true, message: message.type === 'capture-quick' ? t('toast.quickAdded') : message.type === 'capture-inbox' ? t('toast.inboxAdded') : t('toast.saved') };
   })().then((result) => sendResponse(result)).catch((error) => sendResponse({ ok: false, message: error.message || String(error) }));
   return true;
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
   try {
+    await initI18n();
     if (command === 'collect-current-page') await captureCurrent('collect');
     else if (command === 'add-to-quick-access') await captureCurrent('quick');
     else if (command === 'add-to-inbox') await captureCurrent('inbox');
@@ -161,7 +165,7 @@ chrome.commands.onCommand.addListener(async (command) => {
       }
     }
   } catch (err) {
-    flashBadge('deny', '操作失败：' + (err && err.message ? err.message : err));
+    flashBadge('deny', t('error.operation', { ERROR: err && err.message ? err.message : err }));
   }
 });
 
@@ -177,6 +181,6 @@ function flashBadge(kind, title) {
   apply().catch(() => {});
   setTimeout(() => {
     chrome.action.setBadgeText({ text: '' }).catch(() => {});
-    if (!ok) chrome.action.setTitle({ title: DEFAULT_TITLE }).catch(() => {});
+    if (!ok) chrome.action.setTitle({ title: t('action.defaultTitle') }).catch(() => {});
   }, 2000);
 }

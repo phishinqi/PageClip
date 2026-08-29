@@ -54,7 +54,7 @@
   const toggle = document.createElement('button');
   toggle.className = 'pc-toggle';
   toggle.type = 'button';
-  toggle.title = '打开 PageClip 网页侧栏（Ctrl+Shift+P）';
+  toggle.title = 'PageClip';
   const toggleLogo = document.createElement('img');
   toggleLogo.className = 'pc-toggle-logo';
   toggleLogo.src = chrome.runtime.getURL('logo.svg');
@@ -69,6 +69,19 @@
   shadow.append(shell);
   document.documentElement.append(host);
 
+  let i18nLocale = 'zh_CN';
+  let i18nMessages = {};
+  function ct(key, variables = {}) { return String(i18nMessages[key] || key).replace(/\$([A-Z0-9_]+)\$/g, (_, name) => variables[name] ?? ''); }
+  async function loadContentI18n() {
+    try {
+      const stored = await chrome.storage.local.get('bc_data');
+      const preference = stored.bc_data?.settings?.uiLocale;
+      i18nLocale = preference === 'en' ? 'en' : preference === 'zh_CN' ? 'zh_CN' : /^zh/i.test(chrome.i18n?.getUILanguage?.() || navigator.language || '') ? 'zh_CN' : 'en';
+      const response = await chrome.runtime.sendMessage({ type: 'get-i18n-messages', locale: i18nLocale });
+      if (response?.ok) { i18nMessages = response.messages || {}; toggleLogo.alt = ct('app.name'); toggle.title = ct('content.toggleTitle'); iframe.title = ct('content.iframeTitle'); }
+    } catch {}
+  }
+  void loadContentI18n();
   let settings = { overlayOpen: false, overlayPosition: 'right', overlayMode: 'overlay', overlayWidth: 380, overlayMask: false };
   let dragStart = null;
   const originalPadding = {
@@ -104,15 +117,15 @@
 
   function showMenu(x, y) {
     const items = [
-      ['★', '永久收藏当前页', 'capture-current'],
-      ['☆', '加入快捷收藏夹', 'capture-quick'],
-      ['□', '加入 PageClip Inbox', 'capture-inbox'],
-      ['▣', '同步到 Chrome Reading List', 'sync-reading'],
+      ['★', ct('content.capture'), 'capture-current'],
+      ['☆', ct('content.quick'), 'capture-quick'],
+      ['□', ct('content.inbox'), 'capture-inbox'],
+      ['▣', ct('content.reading'), 'sync-reading'],
       ['---', '', 'separator'],
-      ['⧉', '复制页面 URL', 'copy-url'],
-      ['↗', '在新标签页打开 PageClip', 'open-manager'],
-      ['⚙', '打开 PageClip 设置', 'open-settings'],
-      ['◧', settings.overlayOpen ? '关闭网页侧栏' : '打开网页侧栏', 'toggle-overlay'],
+      ['⧉', ct('content.copy'), 'copy-url'],
+      ['↗', ct('content.openManagerTab'), 'open-manager'],
+      ['⚙', ct('content.openSettings'), 'open-settings'],
+      ['◧', settings.overlayOpen ? ct('content.close') : ct('content.toggle'), 'toggle-overlay'],
     ];
     menu.replaceChildren();
     for (const [glyph, label, action] of items) {
@@ -159,7 +172,7 @@
       document.execCommand('copy');
       input.remove();
     }
-    showMenuToast('页面 URL 已复制');
+    showMenuToast(ct('content.copied'));
   }
 
   function handleMenuAction(action) {
@@ -167,12 +180,12 @@
     if (action === 'copy-url') return copyUrl();
     const payload = { url: location.href, title: document.title, favIconUrl: '' };
     if (action === 'open-manager' || action === 'open-settings') {
-      chrome.runtime.sendMessage({ type: action, payload }).then(() => showMenuToast('已打开 PageClip')).catch(() => showMenuToast('PageClip 打开失败'));
+      chrome.runtime.sendMessage({ type: action, payload }).then(() => showMenuToast(ct('toast.opened'))).catch(() => showMenuToast(ct('error.open')));
       return;
     }
     chrome.runtime.sendMessage({ type: action, payload }).then((reply) => {
-      showMenuToast(reply?.message || '操作完成');
-    }).catch(() => showMenuToast('操作失败，请重试'));
+      showMenuToast(reply?.message || ct('toast.operationDone'));
+    }).catch(() => showMenuToast(ct('error.retry')));
   }
 
   window.addEventListener('message', (event) => {
@@ -223,6 +236,7 @@
     if (message?.type === 'pageclip:close') setOpen(false);
   });
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.bc_data?.newValue?.settings?.uiLocale !== changes.bc_data?.oldValue?.settings?.uiLocale) void loadContentI18n();
     if (area === 'local' && changes.pageclipOverlay) applySettings(changes.pageclipOverlay.newValue);
   });
   chrome.storage.local.get('pageclipOverlay').then((result) => applySettings(result.pageclipOverlay || settings)).catch(() => applySettings(settings));

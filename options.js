@@ -4,6 +4,7 @@ import {
   clearRecycleBin, pruneRecycleBin, updateSettings, getCloudBackupPayload, previewCloudRestore, restoreCloudPayload,
 } from './js/store.js';
 import { importBrowserBookmarks, importBookmarksHtml } from './js/bookmark-import.js';
+import { initI18n, applyI18n, onLocaleChanged, setLocalePreference, getLocalePreference, translateText, t } from './js/i18n.js';
 import { encryptBackup, decryptBackup, createPasswordVerifier, verifyBackupPassword, getOrCreateDeviceKey, exportEncryptedRecoveryKey, importEncryptedRecoveryKey } from './js/crypto-backup.js';
 import { connectGoogle, getConnectedAccount, signOutGoogle, uploadLatestBackup, downloadLatestBackup, getCloudBackupStatus } from './js/cloud-backup.js';
 
@@ -16,8 +17,10 @@ async function init() {
   await ensureDataInitialized();
   await pruneRecycleBin();
   data = await loadData();
+  await initI18n({ root: document });
   cloudStatus = await getCloudBackupStatus();
   render();
+  onLocaleChanged(() => { applyI18n(document); render(); });
 }
 
 function render() {
@@ -27,76 +30,89 @@ function render() {
   const quick = data.quickAccess || [];
   root.replaceChildren(
     grid(
-      card('数据统计', 'PageClip 的数据全部保存在本机 chrome.storage.local。', h('div', { class: 'stat-grid' },
-        stat(stats.items, '永久收藏'),
-        stat(quick.filter((item) => item.type === 'single').length, '快捷单页'),
-        stat(quick.filter((item) => item.type === 'group').length, '快捷集合'),
-        stat(inbox.unread, 'Inbox 未读'),
-        stat(inbox.read, 'Inbox 已读'),
-        stat(stats.folders, '文件夹'),
-        stat(stats.tags, '标签'),
-        stat(recycle.entries, '回收站条目')
+      card(t('settings.stats'), t('settings.statsHint'), h('div', { class: 'stat-grid' },
+        stat(stats.items, t('settings.permanent')),
+        stat(quick.filter((item) => item.type === 'single').length, t('settings.quickSingles')),
+        stat(quick.filter((item) => item.type === 'group').length, t('settings.quickGroups')),
+        stat(inbox.unread, t('settings.unread')),
+        stat(inbox.read, t('settings.read')),
+        stat(stats.folders, t('settings.folders')),
+        stat(stats.tags, t('settings.tags')),
+        stat(recycle.entries, t('settings.recycleEntries'))
       )),
+      languageCard(),
       cloudCard(),
-      card('备份与恢复', 'JSON 会保留永久收藏、文件夹、快捷收藏夹和 Inbox；导入支持合并或替换。', actions(
-        button('导出 JSON 备份', 'primary', exportJson),
-        button('导入 JSON 备份', '', chooseJson)
+      card(t('settings.backup'), t('settings.backupHint'), actions(
+        button(t('settings.exportJson'), 'primary', exportJson),
+        button(t('settings.importJson'), '', chooseJson)
       )),
-      card('导入浏览器书签', '只复制到 PageClip，不修改 Chrome 原生书签。当前浏览器树和 bookmarks.html 都会保留根目录及嵌套层级。', actions(
-        button('读取当前浏览器书签', 'primary', importCurrentBookmarks),
-        button('选择 bookmarks.html', '', chooseHtml)
+      card(t('settings.importBookmarks'), t('settings.bookmarksHint'), actions(
+        button(t('settings.readBookmarks'), 'primary', importCurrentBookmarks),
+        button(t('settings.chooseBookmarks'), '', chooseHtml)
       )),
-      card('HTML / CSV 导入与导出', 'PageClip 三类数据支持导入导出；Chrome 书签使用 bookmarks.html 入口，导入只写入 PageClip。', exportActions()),
-      card('回收站', '删除和完成并移除会保留 30 天；过期快照会自动清理。', recycleView(recycle)),
-      card('快捷键与存储说明', '快捷键可在 Chrome 扩展快捷键页修改。', h('div', {},
-        p('Ctrl+Shift+S：永久收藏　Ctrl+Shift+Q：快捷收藏　Ctrl+Shift+R：加入 Inbox　Ctrl+Shift+P：网页侧栏'),
+      card(t('settings.htmlCsv'), t('settings.htmlCsvHint'), exportActions()),
+      card(t('settings.recycle'), t('settings.recycleHint'), recycleView(recycle)),
+      card(t('settings.shortcuts'), t('settings.shortcutsHint'), h('div', {},
+        p(t('settings.shortcutsText')),
         button('打开快捷键设置', '', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })),
-        h('p', { class: 'desc option-note', text: '数据仅保存在本机，不上传服务器；卸载扩展前请先导出 JSON 备份。' })
+        h('p', { class: 'desc option-note', text: t('settings.localNote') })
       ))
     )
   );
 }
 
 
+function languageCard() {
+  const select = h('select', { class: 'locale-select', 'aria-label': t('settings.language') });
+  for (const option of [
+    ['auto', t('settings.localeAuto')],
+    ['zh_CN', t('settings.localeZh')],
+    ['en', t('settings.localeEn')]
+  ]) select.append(h('option', { value: option[0], text: option[1] }));
+  select.value = getLocalePreference();
+  select.addEventListener('change', () => setLocalePreference(select.value));
+  return card(t('settings.language'), t('settings.languageHint'), h('div', { class: 'language-setting' }, select));
+}
+
 function cloudCard() {
   const account = cloudStatus.account?.email || data.settings?.cloudBackup?.googleAccountEmail || '';
   const file = cloudStatus.file;
   const localLast = data.settings?.cloudBackup?.lastBackupAt;
-  const statusText = cloudStatus.error ? '连接失败：' + cloudStatus.error : file ? '云端已有备份 · 修改时间 ' + new Date(file.modifiedTime).toLocaleString() : localLast ? '本机记录上次备份：' + new Date(localLast).toLocaleString() : '尚未上传备份';
-  return card('Google Drive 云端备份', '使用 Google OAuth 登录，备份上传到 Drive 隐藏应用数据目录；上传内容始终是加密密文。', h('div', { class: 'cloud-backup' },
-    h('div', { class: 'cloud-status' }, h('strong', { text: account ? '已连接：' + account : '尚未连接 Google 账号' }), h('span', { class: 'desc', text: statusText })),
+  const statusText = cloudStatus.error ? t('settings.cloudError', { ERROR: cloudStatus.error }) : file ? t('settings.cloudFile', { TIME: new Date(file.modifiedTime).toLocaleString() }) : localLast ? t('settings.localLast', { TIME: new Date(localLast).toLocaleString() }) : t('settings.noCloud');
+  return card(t('settings.cloud'), t('settings.cloudHint'), h('div', { class: 'cloud-backup' },
+    h('div', { class: 'cloud-status' }, h('strong', { text: account ? t('settings.connected', { EMAIL: account }) : t('settings.notConnected') }), h('span', { class: 'desc', text: statusText })),
     actions(
-      account ? null : button('连接 Google Drive', 'primary', connectCloud),
-      account ? button('手动备份', 'primary', runCloudBackup) : null,
-      account ? button('手动恢复', '', runCloudRestore) : null,
-      account ? button('导出本机恢复密钥', '', exportRecoveryKey) : null,
-      account ? button('导入本机恢复密钥', '', importRecoveryKey) : null,
-      account ? button('退出并更换账号', 'danger', disconnectCloud) : null
+      account ? null : button(t('settings.connect'), 'primary', connectCloud),
+      account ? button(t('settings.manualBackup'), 'primary', runCloudBackup) : null,
+      account ? button(t('settings.manualRestore'), '', runCloudRestore) : null,
+      account ? button(t('settings.exportRecovery'), '', exportRecoveryKey) : null,
+      account ? button(t('settings.importRecovery'), '', importRecoveryKey) : null,
+      account ? button(t('settings.signOut'), 'danger', disconnectCloud) : null
     ),
-    h('p', { class: 'desc cloud-note', text: '每次备份选择加密方式：备份密码或 Chrome 本机密钥。本机密钥跨设备恢复需要加密恢复密钥文件。' })
+    h('p', { class: 'desc cloud-note', text: t('settings.cloudNote') })
   ));
 }
 
-async function connectCloud() { try { await connectGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); render(); toast('Google Drive 已连接'); } catch (error) { toast(error.message || 'Google 登录失败', 'error'); } }
-async function disconnectCloud() { if (!confirm('退出 Google 账号？不会删除云端备份，也不会删除本机 PageClip 数据。')) return; try { await signOutGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); render(); toast('已退出 Google 账号'); } catch (error) { toast(error.message || '退出失败', 'error'); } }
+async function connectCloud() { try { await connectGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); render(); toast(t('settings.cloudConnected')); } catch (error) { toast(error.message || t('backup.googleFailed'), 'error'); } }
+async function disconnectCloud() { if (!confirm(t('backup.logoutConfirm'))) return; try { await signOutGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); render(); toast(t('settings.signedOut')); } catch (error) { toast(error.message || t('backup.failed'), 'error'); } }
 
 async function chooseBackupMode() {
   const body = h('div', { class: 'cloud-form' });
   const passwordRadio = h('input', { type: 'radio', name: 'cloud-encryption-mode', checked: true });
   const deviceRadio = h('input', { type: 'radio', name: 'cloud-encryption-mode' });
-  const passwordHint = h('p', { class: 'desc', text: '每次备份输入密码；密码不保存，只保存本机 verifier。' });
-  body.append(h('label', { class: 'radio-row' }, passwordRadio, h('span', {}, h('strong', { text: '备份密码加密' }), passwordHint)), h('label', { class: 'radio-row' }, deviceRadio, h('span', {}, h('strong', { text: 'Chrome 本机密钥加密' }), h('p', { class: 'desc', text: '同一浏览器可直接恢复；跨设备需要导入加密恢复密钥。' }))));
-  return optionDialog('选择备份加密方式', body, [
-    { label: '取消', kind: 'ghost', cancel: true },
-    { label: '下一步', kind: 'primary', onClick: async () => ({ mode: deviceRadio.checked ? 'device-key' : 'password' }) }
+  const passwordHint = h('p', { class: 'desc', text: t('backup.passwordHint') });
+  body.append(h('label', { class: 'radio-row' }, passwordRadio, h('span', {}, h('strong', { text: t('backup.passwordMode') }), passwordHint)), h('label', { class: 'radio-row' }, deviceRadio, h('span', {}, h('strong', { text: t('backup.deviceMode') }), h('p', { class: 'desc', text: t('backup.deviceHint') }))));
+  return optionDialog(t('backup.chooseMode'), body, [
+    { label: t('button.cancel'), kind: 'ghost', cancel: true },
+    { label: t('button.next'), kind: 'primary', onClick: async () => ({ mode: deviceRadio.checked ? 'device-key' : 'password' }) }
   ]);
 }
 
 async function askPassword(title, confirmPassword = false, label = '备份密码') {
-  const password = h('input', { type: 'password', autocomplete: 'new-password', placeholder: '至少 8 个字符' });
-  const confirmInput = confirmPassword ? h('input', { type: 'password', autocomplete: 'new-password', placeholder: '再次输入密码' }) : null;
-  const body = h('div', { class: 'cloud-form' }, h('label', { class: 'form-field' }, h('span', { class: 'form-label', text: label }), password), confirmInput ? h('label', { class: 'form-field' }, h('span', { class: 'form-label', text: '确认' }), confirmInput) : null, h('p', { class: 'desc', text: 'PageClip 不保存密码；忘记密码且没有本机恢复密钥时无法解密备份。' }));
-  return optionDialog(title, body, [{ label: '取消', kind: 'ghost', cancel: true }, { label: '确定', kind: 'primary', onClick: async () => { if (password.value.length < 8 || (confirmInput && password.value !== confirmInput.value)) { toast(confirmInput ? '密码至少 8 个字符且两次输入必须一致' : '密码至少需要 8 个字符', 'error'); return false; } return password.value; } }]);
+  const password = h('input', { type: 'password', autocomplete: 'new-password', placeholder: t('backup.passwordPlaceholder') });
+  const confirmInput = confirmPassword ? h('input', { type: 'password', autocomplete: 'new-password', placeholder: t('backup.passwordPlaceholder') }) : null;
+  const body = h('div', { class: 'cloud-form' }, h('label', { class: 'form-field' }, h('span', { class: 'form-label', text: label }), password), confirmInput ? h('label', { class: 'form-field' }, h('span', { class: 'form-label', text: t('backup.passwordConfirm') }), confirmInput) : null, h('p', { class: 'desc', text: t('backup.passwordWarning') }));
+  return optionDialog(title, body, [{ label: t('button.cancel'), kind: 'ghost', cancel: true }, { label: t('button.confirm'), kind: 'primary', onClick: async () => { if (password.value.length < 8 || (confirmInput && password.value !== confirmInput.value)) { toast(confirmInput ? t('backup.passwordMismatch') : t('backup.passwordLength'), 'error'); return false; } return password.value; } }]);
 }
 
 async function runCloudBackup() {
@@ -113,12 +129,12 @@ async function runCloudBackup() {
       options.password = password;
     } else options.key = await getOrCreateDeviceKey();
     cloudStatus = await getCloudBackupStatus();
-    if (cloudStatus.file && !confirm('云端已有 PageClip-latest.enc，确认覆盖为当前本机数据？')) return;
+    if (cloudStatus.file && !confirm(t('backup.overwrite'))) return;
     const envelope = await encryptBackup(getCloudBackupPayload(data), options);
     const result = await uploadLatestBackup(envelope);
     cloudStatus = await getCloudBackupStatus();
-    data = await loadData(); render(); toast('备份成功：' + Math.round(result.size / 1024) + ' KB');
-  } catch (error) { toast(error.message || '云端备份失败', 'error'); }
+    data = await loadData(); render(); toast(t('backup.success', { SIZE: Math.round(result.size / 1024) }));
+  } catch (error) { toast(error.message || t('backup.cloudFailed'), 'error'); }
 }
 
 async function runCloudRestore() {
@@ -126,25 +142,25 @@ async function runCloudRestore() {
     if (!cloudStatus.connected) await connectGoogle();
     const remote = await downloadLatestBackup();
     let options = {};
-    if (remote.envelope.encryption?.mode === 'password') { const password = await askPassword('输入备份密码', false); if (!password) return; options.password = password; }
+    if (remote.envelope.encryption?.mode === 'password') { const password = await askPassword(t('backup.enter'), false); if (!password) return; options.password = password; }
     else if (remote.envelope.encryption?.mode === 'device-key') options.key = await getOrCreateDeviceKey();
     const cloudData = await decryptBackup(remote.envelope, options);
     const diff = previewCloudRestore(data, cloudData);
     const decision = await showRestorePreview(remote.file, diff); if (!decision) return;
-    if (decision === 'replace' && !confirm('替换会覆盖当前本机 PageClip 数据，确认继续？')) return;
-    await restoreCloudPayload(cloudData, decision); data = await loadData(); cloudStatus = await getCloudBackupStatus(); render(); toast(decision === 'replace' ? '已用云端备份替换本机数据' : '已合并云端备份');
-  } catch (error) { toast(error.message || '云端恢复失败', 'error'); }
+    if (decision === 'replace' && !confirm(t('backup.restoreReplace'))) return;
+    await restoreCloudPayload(cloudData, decision); data = await loadData(); cloudStatus = await getCloudBackupStatus(); render(); toast(decision === 'replace' ? t('settings.restoreReplaceDone') : t('settings.restoreMergeDone'));
+  } catch (error) { toast(error.message || t('backup.restoreFailed'), 'error'); }
 }
 
 async function showRestorePreview(file, diff) {
-  const body = h('div', { class: 'restore-preview' }, h('p', { class: 'desc', text: '云端备份：' + new Date(file.modifiedTime || Date.now()).toLocaleString() }), h('div', { class: 'diff-grid' },
-    stat(diff.cloud.items, '云端收藏'), stat(diff.cloud.quickSingles, '快捷单页'), stat(diff.cloud.quickGroups, '快捷集合'), stat(diff.cloud.inbox, 'Inbox'), stat(diff.cloud.recycleEntries, '回收站'), stat(diff.added, '可新增'), stat(diff.same, '相同'), stat(diff.conflicts, '冲突'), stat(diff.localOnly, '本机独有')
-  ), h('p', { class: 'desc', text: '合并：冲突保留本机；替换：完整采用云端 schema 3。' }));
-  return optionDialog('恢复差异预览', body, [{ label: '取消', kind: 'ghost', cancel: true }, { label: '合并', kind: 'primary', onClick: async () => 'merge' }, { label: '替换', kind: 'danger', onClick: async () => 'replace' }]);
+  const body = h('div', { class: 'restore-preview' }, h('p', { class: 'desc', text: t('settings.restoreTime', { TIME: new Date(file.modifiedTime || Date.now()).toLocaleString() }) }), h('div', { class: 'diff-grid' },
+    stat(diff.cloud.items, t('settings.permanent')), stat(diff.cloud.quickSingles, t('settings.quickSingles')), stat(diff.cloud.quickGroups, t('settings.quickGroups')), stat(diff.cloud.inbox, 'Inbox'), stat(diff.cloud.recycleEntries, t('settings.recycleEntries')), stat(diff.added, t('backup.added')), stat(diff.same, t('backup.same')), stat(diff.conflicts, t('backup.conflicts')), stat(diff.localOnly, t('backup.localOnly'))
+  ), h('p', { class: 'desc', text: t('settings.restoreHint') }));
+  return optionDialog(t('backup.diffTitle'), body, [{ label: t('button.cancel'), kind: 'ghost', cancel: true }, { label: t('backup.merge'), kind: 'primary', onClick: async () => 'merge' }, { label: t('backup.replace'), kind: 'danger', onClick: async () => 'replace' }]);
 }
 
-async function exportRecoveryKey() { try { const password = await askPassword('设置恢复密钥密码', true, '恢复密钥密码'); if (!password) return; const file = await exportEncryptedRecoveryKey(password); downloadText(JSON.stringify(file, null, 2), 'PageClip-device-recovery-key.json', 'application/json'); toast('加密恢复密钥已导出'); } catch (error) { toast(error.message || '恢复密钥导出失败', 'error'); } }
-function importRecoveryKey() { const input = h('input', { type: 'file', accept: '.json,application/json' }); input.addEventListener('change', async () => { const file = input.files?.[0]; if (!file) return; try { const password = await askPassword('输入恢复密钥密码', false, '恢复密钥密码'); if (!password) return; await importEncryptedRecoveryKey(file, password); toast('本机恢复密钥已导入'); } catch (error) { toast(error.message || '恢复密钥导入失败', 'error'); } }); input.click(); }
+async function exportRecoveryKey() { try { const password = await askPassword(t('backup.setupRecovery'), true, t('backup.recoveryLabel')); if (!password) return; const file = await exportEncryptedRecoveryKey(password); downloadText(JSON.stringify(file, null, 2), 'PageClip-device-recovery-key.json', 'application/json'); toast(t('settings.recoveryExported')); } catch (error) { toast(error.message || t('backup.failed'), 'error'); } }
+function importRecoveryKey() { const input = h('input', { type: 'file', accept: '.json,application/json' }); input.addEventListener('change', async () => { const file = input.files?.[0]; if (!file) return; try { const password = await askPassword('输入恢复密钥密码', false, t('backup.recoveryLabel')); if (!password) return; await importEncryptedRecoveryKey(file, password); toast(t('settings.recoveryImported')); } catch (error) { toast(error.message || t('backup.restoreFailed'), 'error'); } }); input.click(); }
 
 function optionDialog(title, body, buttons) {
   return new Promise((resolve) => {
@@ -167,12 +183,13 @@ function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
     if (value == null || value === false) continue;
-    if (key === 'text') el.textContent = String(value);
+    if (key === 'text') el.textContent = translateText(value);
     else if (key.startsWith('on')) el.addEventListener(key.slice(2), value);
     else if (key === 'checked' && value) el.checked = true;
+    else if (key === 'title' || key === 'placeholder' || key === 'aria-label') el.setAttribute(key, translateText(value));
     else el.setAttribute(key, String(value));
   }
-  for (const child of children.flat()) if (child != null) el.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  for (const child of children.flat()) if (child != null) el.append(child instanceof Node ? child : document.createTextNode(translateText(child))); 
   return el;
 }
 function button(label, className, onClick) { return h('button', { class: className, onclick: onClick }, label); }

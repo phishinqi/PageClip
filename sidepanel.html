@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-i18n-page="sidepanel">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PageClip</title>
+  <title data-i18n="app.name">PageClip</title>
   <link rel="stylesheet" href="css/sidepanel.css" />
   <!-- 扩展环境直接运行；无 chrome API 的本地预览环境自动加载 mock -->
   <script src="js/boot.js"></script>
@@ -11,25 +11,25 @@
 <body>
   <header id="topbar">
     <div class="brand-row">
-      <img id="logo" src="logo.svg" alt="PageClip Logo" />
+      <img id="logo" src="logo.svg" alt="PageClip" data-i18n-alt="app.name" />
       <span class="brand">PageClip</span>
       <span class="flex1"></span>
-      <button id="btnCollect" class="icon-btn accent" title="永久收藏当前页"></button>
-      <button id="btnQuick" class="icon-btn" title="加入快捷收藏夹（Ctrl+Shift+Q）"></button>
-      <button id="btnInbox" class="icon-btn" title="加入 PageClip Inbox（Ctrl+Shift+R）"></button>
-      <button id="btnSettings" class="icon-btn" title="设置与备份"></button>
-      <button id="btnEmbeddedClose" class="icon-btn embedded-close" title="收起网页侧栏" hidden></button>
+      <button id="btnCollect" class="icon-btn accent" data-i18n-title="button.collectCurrent"></button>
+      <button id="btnQuick" class="icon-btn" data-i18n-title="button.quickCurrent"></button>
+      <button id="btnInbox" class="icon-btn" data-i18n-title="button.inboxCurrent"></button>
+      <button id="btnSettings" class="icon-btn" data-i18n-title="button.settings"></button>
+      <button id="btnEmbeddedClose" class="icon-btn embedded-close" data-i18n-title="button.closeOverlay" hidden></button>
     </div>
     <div class="search-row">
       <span id="searchIcon"></span>
-      <input id="searchInput" type="text" placeholder="搜索收藏与书签，#标签名 按标签过滤" spellcheck="false" />
-      <button id="btnClearSearch" class="icon-btn" title="清空" hidden></button>
+      <input id="searchInput" type="text" data-i18n-placeholder="nav.searchPlaceholder" spellcheck="false" />
+      <button id="btnClearSearch" class="icon-btn" data-i18n-title="button.clear" hidden></button>
     </div>
     <nav id="tabs">
-      <button class="tab active" data-tab="collection">收藏</button>
-      <button class="tab" data-tab="quick">快捷</button>
-      <button class="tab" data-tab="inbox">Inbox</button>
-      <button class="tab" data-tab="bookmarks">Chrome 书签</button>
+      <button class="tab active" data-tab="collection" data-i18n="nav.collection">收藏</button>
+      <button class="tab" data-tab="quick" data-i18n="nav.quick">快捷</button>
+      <button class="tab" data-tab="inbox" data-i18n="nav.inbox">Inbox</button>
+      <button class="tab" data-tab="bookmarks" data-i18n="nav.bookmarks">Chrome 书签</button>
     </nav>
   </header>
 

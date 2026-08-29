@@ -1,3 +1,4 @@
+import { translateText } from './i18n.js';
 // UI 基建：DOM 构建、图标、toast、模态框、右键菜单、favicon 兜底链、搜索高亮。
 
 // ———— DOM 构建 ————
@@ -8,11 +9,12 @@ export function h(tag, attrs = {}, ...children) {
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v;
-    else if (k === 'text') el.textContent = String(v);
+    else if (k === 'text') el.textContent = translateText(v);
     else if (k === 'dataset') Object.assign(el.dataset, v);
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
     else if (k === 'html') el.innerHTML = v;
     else if (v === true) el.setAttribute(k, '');
+    else if (k === 'title' || k === 'placeholder' || k === 'aria-label') el.setAttribute(k, translateText(v));
     else el.setAttribute(k, String(v));
   }
   appendChildren(el, children);
@@ -24,7 +26,7 @@ function appendChildren(el, children) {
     if (c == null || c === false) continue;
     if (Array.isArray(c)) appendChildren(el, c);
     else if (c instanceof Node) el.append(c);
-    else el.append(document.createTextNode(String(c)));
+    else el.append(document.createTextNode(translateText(c))); 
   }
 }
 

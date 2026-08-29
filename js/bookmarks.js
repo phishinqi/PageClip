@@ -12,6 +12,7 @@ import {
   openUrl,
 } from './ui.js';
 import { createDnd, chromeMoveIndex, isSamePlace, wouldCycle } from './tree.js';
+import { t } from './i18n.js';
 
 export function createBookmarksTab(ctx) {
   let loaded = false;
@@ -37,6 +38,12 @@ export function createBookmarksTab(ctx) {
       '收藏当前页'
     )
   );
+
+  const headerButtons = header.querySelectorAll('button');
+  headerButtons[0]?.setAttribute('data-i18n-text', 'bookmarks.add');
+  headerButtons[1]?.setAttribute('data-i18n-text', 'bookmarks.addFolder');
+  headerButtons[2]?.setAttribute('data-i18n-text', 'bookmarks.saveCurrent');
+  headerButtons[2]?.setAttribute('data-i18n-title', 'bookmarks.quickAdd');
 
   // ———— 数据 ————
 
@@ -320,7 +327,7 @@ export function createBookmarksTab(ctx) {
     if (node.url) {
       const ok = await confirmDialog({
         title: '删除书签',
-        message: `删除书签「${node.title || node.url}」？`,
+        message: t('bookmarks.deleteBookmarkConfirm', { TITLE: node.title || node.url }),
         okLabel: '删除',
       });
       if (!ok) return;
@@ -329,7 +336,7 @@ export function createBookmarksTab(ctx) {
       const n = countUrls(node);
       const ok = await confirmDialog({
         title: '删除文件夹',
-        message: `删除文件夹「${node.title || '未命名'}」及其中的 ${n} 个书签？`,
+        message: t('bookmarks.deleteFolderConfirm', { TITLE: node.title || t('bookmarks.unnamed'), COUNT: n }),
         okLabel: '删除',
       });
       if (!ok) return;
@@ -372,12 +379,12 @@ export function createBookmarksTab(ctx) {
         await chrome.bookmarks.move(node.id, { parentId: f.node.id });
         expanded.add(f.node.id);
         await reload();
-        toast(`已移动到「${f.node.title || '未命名'}」`);
+        toast(t('bookmarks.moved', { TITLE: f.node.title || t('bookmarks.unnamed') }));
       });
       m.append(row);
     }
     modalApi = showModal({
-      title: `移动「${node.title || (node.url ? '书签' : '未命名')}」到…`,
+      title: t('bookmarks.moveTitle', { TITLE: node.title || (node.url ? t('bookmarks.bookmark') : t('bookmarks.unnamed')) }),
       body: m,
       buttons: [{ label: '取消', kind: 'ghost' }],
     });
@@ -406,13 +413,13 @@ export function createBookmarksTab(ctx) {
       const t = byId.get(row.dataset.id);
       if (!d || !t || d.id === t.id) return;
       if (zone === 'into') {
-        if (wouldCycle(byId, d.id, t.id)) throw new Error('不能移动到自身的子文件夹中');
+        if (wouldCycle(byId, d.id, t.id)) throw new Error(t('bookmarks.cannotMoveChild'));
         await chrome.bookmarks.move(d.id, { parentId: t.id });
         expanded.add(t.id);
       } else {
         // before/after：目标父级若在被拖文件夹子树内，同样是移入自身 → 拒绝
         if (!d.url && t.parentId !== d.parentId && wouldCycle(byId, d.id, t.parentId)) {
-          throw new Error('不能移动到自身的子文件夹中');
+          throw new Error(t('bookmarks.cannotMoveChild'));
         }
         const index = chromeMoveIndex(t, zone);
         if (!isSamePlace(d, t.parentId, index)) {
@@ -451,7 +458,7 @@ export function createBookmarksTab(ctx) {
     await chrome.bookmarks.create({ parentId: barId(), title: tab.title || tab.url, url: tab.url });
     expanded.add(barId());
     await reload();
-    toast('已加入书签栏');
+    toast(t('bookmarks.addedToBar'));
   }
 
   // ———— 搜索（供全局搜索调用） ————

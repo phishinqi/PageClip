@@ -9,6 +9,7 @@ import {
   updateSettings,
 } from './js/store.js';
 import { h, icon, toast, showModal, debounce } from './js/ui.js';
+import { initI18n, applyI18n, onLocaleChanged } from './js/i18n.js';
 import { createCollectionTab } from './js/collection.js';
 import { createBookmarksTab } from './js/bookmarks.js';
 import { createQuickAccessTab } from './js/quick-access.js';
@@ -127,8 +128,11 @@ async function collectCurrent() {
 async function init() {
   await ensureDataInitialized();
   await pruneRecycleBin();
+  await initI18n();
   data = await loadData();
 
+  $('view-bookmarks').prepend(bookmarks.header);
+  applyI18n(document);
   $('btnCollect').append(icon('plus', 18));
   $('btnQuick').append(icon('star', 17));
   $('btnInbox').append(icon('inbox', 17));
@@ -137,8 +141,6 @@ async function init() {
   $('btnEmbeddedClose').hidden = !new URLSearchParams(location.search).has('embedded');
   $('searchIcon').append(icon('search', 15));
   $('btnClearSearch').append(icon('close', 14));
-  $('view-bookmarks').prepend(bookmarks.header);
-
   $('btnCollect').addEventListener('click', collectCurrent);
   $('btnQuick').addEventListener('click', () => quickAccess.addCurrent());
   $('btnInbox').addEventListener('click', () => inbox.addCurrent());
@@ -172,6 +174,7 @@ async function init() {
 
   // storage 变化（如快捷键在面板外收藏）→ 实时刷新
   const storageRefresh = debounce(() => refresh(), 100);
+  onLocaleChanged(() => { applyI18n(document); renderCurrent(); });
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.bc_data) storageRefresh();
   });

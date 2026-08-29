@@ -65,3 +65,5 @@ input[type=file] { display:none; }
 .diff-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:14px 0; }
 .diff-grid .stat { min-width:0; }
 @media (max-width:700px) { .diff-grid { grid-template-columns:repeat(2,1fr); } }
+
+.language-setting{display:flex;align-items:center;gap:10px}.locale-select{min-width:160px;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);color:var(--text);font:inherit}

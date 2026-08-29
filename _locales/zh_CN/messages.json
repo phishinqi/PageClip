@@ -1,0 +1,1078 @@
+{
+  "appName": {
+    "message": "PageClip"
+  },
+  "appDescription": {
+    "message": "本地优先的 Chrome 侧边栏收藏、快捷收藏夹、Inbox、书签管理与加密备份。"
+  },
+  "actionDefaultTitle": {
+    "message": "打开 PageClip 侧边栏"
+  },
+  "app.name": {
+    "message": "PageClip"
+  },
+  "app.description": {
+    "message": "本地优先的 Chrome 侧边栏收藏、快捷收藏夹、Inbox、书签管理与加密备份。"
+  },
+  "nav.collection": {
+    "message": "收藏"
+  },
+  "nav.quick": {
+    "message": "快捷"
+  },
+  "nav.inbox": {
+    "message": "Inbox"
+  },
+  "nav.bookmarks": {
+    "message": "Chrome 书签"
+  },
+  "nav.searchPlaceholder": {
+    "message": "搜索收藏与书签，#标签名 按标签过滤"
+  },
+  "button.clearShort": {
+    "message": "清除"
+  },
+  "button.collectCurrent": {
+    "message": "永久收藏当前页"
+  },
+  "button.quickCurrent": {
+    "message": "加入快捷收藏夹（Ctrl+Shift+Q）"
+  },
+  "button.inboxCurrent": {
+    "message": "加入 PageClip Inbox（Ctrl+Shift+R）"
+  },
+  "button.settings": {
+    "message": "设置与备份"
+  },
+  "button.closeOverlay": {
+    "message": "收起网页侧栏"
+  },
+  "button.clear": {
+    "message": "清空"
+  },
+  "button.open": {
+    "message": "打开"
+  },
+  "button.edit": {
+    "message": "编辑"
+  },
+  "button.delete": {
+    "message": "删除"
+  },
+  "button.restore": {
+    "message": "恢复"
+  },
+  "button.permanentDelete": {
+    "message": "永久删除"
+  },
+  "button.save": {
+    "message": "保存"
+  },
+  "button.cancel": {
+    "message": "取消"
+  },
+  "button.confirm": {
+    "message": "确定"
+  },
+  "button.next": {
+    "message": "下一步"
+  },
+  "button.selectAll": {
+    "message": "全选"
+  },
+  "button.clearSelection": {
+    "message": "清除"
+  },
+  "button.invert": {
+    "message": "反选"
+  },
+  "button.completeRemove": {
+    "message": "完成并移除"
+  },
+  "button.currentPage": {
+    "message": "当前页"
+  },
+  "button.tabGroup": {
+    "message": "标签集合"
+  },
+  "button.readingList": {
+    "message": "Reading List"
+  },
+  "button.pin": {
+    "message": "置顶"
+  },
+  "button.unpin": {
+    "message": "取消置顶"
+  },
+  "button.openQuick": {
+    "message": "打开快捷收藏"
+  },
+  "button.restoreGroup": {
+    "message": "恢复标签集合"
+  },
+  "button.editGroup": {
+    "message": "编辑标签集合"
+  },
+  "button.deleteQuick": {
+    "message": "删除快捷收藏"
+  },
+  "button.removeFromGroup": {
+    "message": "从集合移除"
+  },
+  "menu.quick": {
+    "message": "加入 PageClip 快捷收藏夹"
+  },
+  "menu.inbox": {
+    "message": "加入 PageClip Inbox"
+  },
+  "menu.reading": {
+    "message": "同步到 Chrome Reading List"
+  },
+  "menu.toggle": {
+    "message": "打开/关闭 PageClip 网页侧栏"
+  },
+  "inbox.readStatus": {
+    "message": "已读"
+  },
+  "inbox.unreadStatus": {
+    "message": "未读"
+  },
+  "inbox.markRead": {
+    "message": "标记已读"
+  },
+  "inbox.markUnread": {
+    "message": "标为未读"
+  },
+  "feature.quickTitle": {
+    "message": "快捷收藏夹"
+  },
+  "feature.inboxTitle": {
+    "message": "Inbox / 稍后阅读"
+  },
+  "feature.pageclipInbox": {
+    "message": "PageClip Inbox"
+  },
+  "feature.readingList": {
+    "message": "Chrome Reading List"
+  },
+  "empty.quickTitle": {
+    "message": "还没有快捷收藏"
+  },
+  "empty.quickHint": {
+    "message": "把常用网页或当前窗口标签页保存到这里，之后一键恢复。"
+  },
+  "empty.group": {
+    "message": "空集合 · 点击编辑或删除"
+  },
+  "empty.inbox": {
+    "message": "还没有暂存内容"
+  },
+  "empty.reading": {
+    "message": "Chrome Reading List 暂无条目"
+  },
+  "empty.noMatch": {
+    "message": "没有匹配结果"
+  },
+  "empty.noMatchHint": {
+    "message": "试试更短的关键词；#标签名 只过滤插件收藏的标签"
+  },
+  "dialog.deleteQuickTitle": {
+    "message": "删除快捷收藏"
+  },
+  "dialog.deleteInboxTitle": {
+    "message": "删除暂存内容"
+  },
+  "dialog.deleteReadingTitle": {
+    "message": "删除 Reading List 条目"
+  },
+  "dialog.deleteMessage": {
+    "message": "删除「$TITLE$」？",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.deleteGroupMessage": {
+    "message": "删除「$TITLE$」及其中 $COUNT$ 个网页？",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.batchDeleteInboxTitle": {
+    "message": "删除 Inbox 条目"
+  },
+  "dialog.batchDeleteInboxMessage": {
+    "message": "将 $COUNT$ 条内容移入回收站？",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.batchCompleteInboxTitle": {
+    "message": "完成 Inbox 条目"
+  },
+  "dialog.batchCompleteInboxMessage": {
+    "message": "将 $COUNT$ 条内容完成并移入回收站？",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.editGroup": {
+    "message": "编辑标签集合"
+  },
+  "dialog.groupName": {
+    "message": "集合名称"
+  },
+  "dialog.name": {
+    "message": "名称"
+  },
+  "dialog.tabCount": {
+    "message": "当前窗口 $COUNT$ 个可保存标签页（原标签页不会关闭）",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.needOneTab": {
+    "message": "至少选择一个标签页"
+  },
+  "toast.saved": {
+    "message": "已收藏"
+  },
+  "toast.savedNamed": {
+    "message": "已收藏：$TITLE$",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "toast.duplicateSaved": {
+    "message": "已在收藏中，已更新收藏时间"
+  },
+  "toast.quickAdded": {
+    "message": "已加入快捷收藏夹"
+  },
+  "toast.quickUpdated": {
+    "message": "已更新快捷收藏"
+  },
+  "toast.inboxAdded": {
+    "message": "已加入 PageClip Inbox"
+  },
+  "toast.inboxUpdated": {
+    "message": "已更新 Inbox 条目"
+  },
+  "toast.readingAdded": {
+    "message": "已同步到 Chrome Reading List"
+  },
+  "toast.movedToRecycle": {
+    "message": "已移入回收站 · 撤销"
+  },
+  "toast.groupTabRecycle": {
+    "message": "已移入回收站 · 集合仍保留"
+  },
+  "toast.restored": {
+    "message": "已恢复"
+  },
+  "toast.groupSaved": {
+    "message": "已保存标签集合"
+  },
+  "toast.groupSavedChanges": {
+    "message": "集合已保存"
+  },
+  "toast.deleted": {
+    "message": "已删除"
+  },
+  "toast.batchRecycle": {
+    "message": "$COUNT$ 条内容已移入回收站",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "toast.restoredTabs": {
+    "message": "已恢复 $COUNT$ 个标签页",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "toast.opened": {
+    "message": "已打开 PageClip"
+  },
+  "toast.operationDone": {
+    "message": "操作完成"
+  },
+  "toast.imported": {
+    "message": "导入完成"
+  },
+  "error.open": {
+    "message": "PageClip 打开失败"
+  },
+  "error.retry": {
+    "message": "操作失败，请重试"
+  },
+  "error.readPage": {
+    "message": "无法读取当前页面"
+  },
+  "error.systemPage": {
+    "message": "系统特权页面无法收藏"
+  },
+  "error.systemAdd": {
+    "message": "系统页面无法加入 PageClip"
+  },
+  "error.unsupportedQuick": {
+    "message": "当前页面不支持快捷收藏"
+  },
+  "error.unsupportedInbox": {
+    "message": "网页地址不支持暂存"
+  },
+  "error.noTabs": {
+    "message": "当前窗口没有可保存的网页标签"
+  },
+  "error.readingUnsupported": {
+    "message": "当前浏览器不支持 Chrome Reading List"
+  },
+  "error.permissionDenied": {
+    "message": "未授予 Reading List 权限"
+  },
+  "error.operation": {
+    "message": "操作失败：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "error.restore": {
+    "message": "恢复失败：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "error.sync": {
+    "message": "同步失败：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "collection.recent": {
+    "message": "最近收藏"
+  },
+  "collection.time": {
+    "message": "时间"
+  },
+  "collection.timeSortTitle": {
+    "message": "按收藏时间排序"
+  },
+  "collection.title": {
+    "message": "收藏"
+  },
+  "collection.all": {
+    "message": "全部收藏"
+  },
+  "collection.uncategorized": {
+    "message": "未分类"
+  },
+  "collection.addFolder": {
+    "message": "新建文件夹"
+  },
+  "collection.renameFolder": {
+    "message": "重命名文件夹"
+  },
+  "collection.deleteFolder": {
+    "message": "删除文件夹"
+  },
+  "collection.sortTime": {
+    "message": "按时间"
+  },
+  "collection.sortCustom": {
+    "message": "自定义"
+  },
+  "collection.tags": {
+    "message": "标签"
+  },
+  "collection.note": {
+    "message": "备注"
+  },
+  "collection.url": {
+    "message": "网址"
+  },
+  "collection.folder": {
+    "message": "文件夹"
+  },
+  "collection.empty": {
+    "message": "还没有收藏"
+  },
+  "collection.emptyHint": {
+    "message": "按 Ctrl+Shift+S，或点击右上角 ＋ 一键收藏当前网页"
+  },
+  "collection.noMatch": {
+    "message": "没有符合条件的收藏"
+  },
+  "collection.clearTagFilter": {
+    "message": "清除标签筛选"
+  },
+  "collection.folderEmpty": {
+    "message": "此文件夹暂无收藏"
+  },
+  "collection.folderEmptyHint": {
+    "message": "把收藏条目拖到左侧文件夹上即可移动"
+  },
+  "collection.collectCurrent": {
+    "message": "收藏当前页"
+  },
+  "collection.topFolder": {
+    "message": "在顶层新建文件夹"
+  },
+  "collection.newSubfolder": {
+    "message": "新建子文件夹"
+  },
+  "collection.rename": {
+    "message": "重命名"
+  },
+  "collection.openFolder": {
+    "message": "打开文件夹收藏"
+  },
+  "collection.moveTo": {
+    "message": "移动到…"
+  },
+  "collection.openNewTab": {
+    "message": "在新标签页打开"
+  },
+  "collection.delete": {
+    "message": "删除收藏"
+  },
+  "collection.edit": {
+    "message": "编辑收藏"
+  },
+  "collection.reasonPlaceholder": {
+    "message": "记录为什么收藏、关键内容…"
+  },
+  "collection.tagsPlaceholder": {
+    "message": "输入标签，回车添加"
+  },
+  "collection.remove": {
+    "message": "移除"
+  },
+  "collection.nameRequired": {
+    "message": "名称不能为空"
+  },
+  "collection.createdFolder": {
+    "message": "已创建文件夹"
+  },
+  "collection.saved": {
+    "message": "已保存"
+  },
+  "collection.deleted": {
+    "message": "已删除"
+  },
+  "collection.movedTop": {
+    "message": "已移动到顶层"
+  },
+  "collection.customSort": {
+    "message": "已切换为自定义排序"
+  },
+  "collection.cannotDeleteUncategorized": {
+    "message": "「未分类」不能删除"
+  },
+  "collection.cannotMoveUncategorized": {
+    "message": "不能移入「未分类」"
+  },
+  "collection.deleteFolderMessage": {
+    "message": "删除文件夹「$TITLE$」？其中 $COUNT$ 个收藏将移入「未分类」，子文件夹将一并删除。",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "collection.deleteMessage": {
+    "message": "删除「$TITLE$」？（不影响 Chrome 书签）",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "collection.moveTitle": {
+    "message": "移动「$TITLE$」到…",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "collection.movedTo": {
+    "message": "已移动到「$TITLE$」",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.add": {
+    "message": "书签"
+  },
+  "bookmarks.addFolder": {
+    "message": "文件夹"
+  },
+  "bookmarks.quickAdd": {
+    "message": "把当前标签页加入书签栏"
+  },
+  "bookmarks.saveCurrent": {
+    "message": "收藏当前页"
+  },
+  "bookmarks.unnamed": {
+    "message": "未命名"
+  },
+  "bookmarks.newHere": {
+    "message": "在此新建书签"
+  },
+  "bookmarks.rename": {
+    "message": "重命名"
+  },
+  "bookmarks.edit": {
+    "message": "编辑"
+  },
+  "bookmarks.move": {
+    "message": "剪切到文件夹"
+  },
+  "bookmarks.delete": {
+    "message": "删除"
+  },
+  "bookmarks.new": {
+    "message": "新建书签"
+  },
+  "bookmarks.newChildFolder": {
+    "message": "新建子文件夹"
+  },
+  "bookmarks.openNew": {
+    "message": "在新标签页打开"
+  },
+  "bookmarks.create": {
+    "message": "新建书签"
+  },
+  "bookmarks.createFolder": {
+    "message": "新建文件夹"
+  },
+  "bookmarks.editTitle": {
+    "message": "编辑书签"
+  },
+  "bookmarks.renameTitle": {
+    "message": "重命名文件夹"
+  },
+  "bookmarks.name": {
+    "message": "名称"
+  },
+  "bookmarks.bookmarkName": {
+    "message": "书签名称"
+  },
+  "bookmarks.folderName": {
+    "message": "文件夹名称"
+  },
+  "bookmarks.url": {
+    "message": "网址"
+  },
+  "bookmarks.urlPlaceholder": {
+    "message": "https://…"
+  },
+  "bookmarks.urlRequired": {
+    "message": "网址不能为空"
+  },
+  "bookmarks.nameRequired": {
+    "message": "名称不能为空"
+  },
+  "bookmarks.created": {
+    "message": "已创建书签"
+  },
+  "bookmarks.folderCreated": {
+    "message": "已创建文件夹"
+  },
+  "bookmarks.saved": {
+    "message": "已保存"
+  },
+  "bookmarks.deleted": {
+    "message": "已删除"
+  },
+  "bookmarks.deleteBookmark": {
+    "message": "删除书签"
+  },
+  "bookmarks.deleteFolder": {
+    "message": "删除文件夹"
+  },
+  "bookmarks.deleteBookmarkConfirm": {
+    "message": "删除书签「$TITLE$」？",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.deleteFolderConfirm": {
+    "message": "删除文件夹「$TITLE$」及其中的 $COUNT$ 个书签？",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.moved": {
+    "message": "已移动到「$TITLE$」",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.moveTitle": {
+    "message": "移动「$TITLE$」到…",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.topLevel": {
+    "message": "（顶层）"
+  },
+  "bookmarks.cannotMoveChild": {
+    "message": "不能移动到自身的子文件夹中"
+  },
+  "bookmarks.addedToBar": {
+    "message": "已加入书签栏"
+  },
+  "settings.title": {
+    "message": "PageClip 设置"
+  },
+  "settings.subtitle": {
+    "message": "设置与数据管理"
+  },
+  "settings.eyebrow": {
+    "message": "设置与数据管理"
+  },
+  "settings.hero": {
+    "message": "把收藏整理成自己的工作流"
+  },
+  "settings.heroHint": {
+    "message": "备份、导入、云端加密备份和回收站都集中在这里。本地数据默认只保存在当前浏览器中，云备份仅在你手动触发时上传密文。"
+  },
+  "settings.stats": {
+    "message": "数据统计"
+  },
+  "settings.statsHint": {
+    "message": "PageClip 的数据全部保存在本机 chrome.storage.local。"
+  },
+  "settings.permanent": {
+    "message": "永久收藏"
+  },
+  "settings.quickSingles": {
+    "message": "快捷单页"
+  },
+  "settings.quickGroups": {
+    "message": "快捷集合"
+  },
+  "settings.unread": {
+    "message": "Inbox 未读"
+  },
+  "settings.read": {
+    "message": "Inbox 已读"
+  },
+  "settings.folders": {
+    "message": "文件夹"
+  },
+  "settings.tags": {
+    "message": "标签"
+  },
+  "settings.recycleEntries": {
+    "message": "回收站条目"
+  },
+  "settings.backup": {
+    "message": "备份与恢复"
+  },
+  "settings.backupHint": {
+    "message": "JSON 会保留永久收藏、文件夹、快捷收藏夹和 Inbox；导入支持合并或替换。"
+  },
+  "settings.exportJson": {
+    "message": "导出 JSON 备份"
+  },
+  "settings.importJson": {
+    "message": "导入 JSON 备份"
+  },
+  "settings.importBookmarks": {
+    "message": "导入浏览器书签"
+  },
+  "settings.bookmarksHint": {
+    "message": "只复制到 PageClip，不修改 Chrome 原生书签。当前浏览器树和 bookmarks.html 都会保留根目录及嵌套层级。"
+  },
+  "settings.readBookmarks": {
+    "message": "读取当前浏览器书签"
+  },
+  "settings.chooseBookmarks": {
+    "message": "选择 bookmarks.html"
+  },
+  "settings.htmlCsv": {
+    "message": "HTML / CSV 导入与导出"
+  },
+  "settings.importCollection": {
+    "message": "导入收藏 HTML/CSV"
+  },
+  "settings.importQuick": {
+    "message": "导入快捷 HTML/CSV"
+  },
+  "settings.importInbox": {
+    "message": "导入 Inbox HTML/CSV"
+  },
+  "settings.exportCollectionHtml": {
+    "message": "导出收藏 HTML"
+  },
+  "settings.exportCollectionCsv": {
+    "message": "导出收藏 CSV"
+  },
+  "settings.exportQuickHtml": {
+    "message": "导出快捷 HTML"
+  },
+  "settings.exportQuickCsv": {
+    "message": "导出快捷 CSV"
+  },
+  "settings.exportInboxHtml": {
+    "message": "导出 Inbox HTML"
+  },
+  "settings.exportInboxCsv": {
+    "message": "导出 Inbox CSV"
+  },
+  "settings.exportChromeHtml": {
+    "message": "导出 Chrome 书签 HTML"
+  },
+  "settings.exportChromeCsv": {
+    "message": "导出 Chrome 书签 CSV"
+  },
+  "settings.htmlCsvHint": {
+    "message": "PageClip 三类数据支持导入导出；Chrome 书签使用 bookmarks.html 入口，导入只写入 PageClip。"
+  },
+  "settings.recycle": {
+    "message": "回收站"
+  },
+  "settings.recycleHint": {
+    "message": "删除和完成并移除会保留 30 天；过期快照会自动清理。"
+  },
+  "settings.shortcuts": {
+    "message": "快捷键与存储说明"
+  },
+  "settings.shortcutsText": {
+    "message": "Ctrl+Shift+S：永久收藏　Ctrl+Shift+Q：快捷收藏　Ctrl+Shift+R：加入 Inbox　Ctrl+Shift+P：网页侧栏"
+  },
+  "settings.shortcutsHint": {
+    "message": "快捷键可在 Chrome 扩展快捷键页修改。"
+  },
+  "settings.openShortcuts": {
+    "message": "打开快捷键设置"
+  },
+  "settings.localNote": {
+    "message": "数据仅保存在本机，不上传服务器；卸载扩展前请先导出 JSON 备份。"
+  },
+  "settings.cloud": {
+    "message": "Google Drive 云端备份"
+  },
+  "settings.cloudHint": {
+    "message": "使用 Google OAuth 登录，备份上传到 Drive 隐藏应用数据目录；上传内容始终是加密密文。"
+  },
+  "settings.connected": {
+    "message": "已连接：$EMAIL$",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings.notConnected": {
+    "message": "尚未连接 Google 账号"
+  },
+  "settings.cloudFile": {
+    "message": "云端已有备份 · 修改时间 $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings.localLast": {
+    "message": "本机记录上次备份：$TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings.noCloud": {
+    "message": "尚未上传备份"
+  },
+  "settings.connect": {
+    "message": "连接 Google Drive"
+  },
+  "settings.manualBackup": {
+    "message": "手动备份"
+  },
+  "settings.manualRestore": {
+    "message": "手动恢复"
+  },
+  "settings.exportRecovery": {
+    "message": "导出本机恢复密钥"
+  },
+  "settings.importRecovery": {
+    "message": "导入本机恢复密钥"
+  },
+  "settings.signOut": {
+    "message": "退出并更换账号"
+  },
+  "settings.cloudNote": {
+    "message": "每次备份选择加密方式：备份密码或 Chrome 本机密钥。本机密钥跨设备恢复需要加密恢复密钥文件。"
+  },
+  "settings.language": {
+    "message": "语言"
+  },
+  "settings.languageHint": {
+    "message": "选择自动跟随 Chrome 语言，或手动固定中文 / English。"
+  },
+  "settings.localeAuto": {
+    "message": "自动"
+  },
+  "settings.localeZh": {
+    "message": "中文"
+  },
+  "settings.localeEn": {
+    "message": "English"
+  },
+  "backup.passwordMode": {
+    "message": "备份密码加密"
+  },
+  "backup.deviceMode": {
+    "message": "Chrome 本机密钥加密"
+  },
+  "backup.passwordHint": {
+    "message": "每次备份输入密码；密码不保存，只保存本机 verifier。"
+  },
+  "backup.deviceHint": {
+    "message": "同一浏览器可直接恢复；跨设备需要导入加密恢复密钥。"
+  },
+  "backup.passwordPlaceholder": {
+    "message": "至少 8 个字符"
+  },
+  "backup.passwordConfirm": {
+    "message": "确认"
+  },
+  "backup.passwordWarning": {
+    "message": "PageClip 不保存密码；忘记密码且没有本机恢复密钥时无法解密备份。"
+  },
+  "backup.overwrite": {
+    "message": "云端已有 PageClip-latest.enc，确认覆盖为当前本机数据？"
+  },
+  "backup.restoreReplace": {
+    "message": "替换会覆盖当前本机 PageClip 数据，确认继续？"
+  },
+  "backup.success": {
+    "message": "备份成功：$SIZE$ KB",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "backup.cloudFailed": {
+    "message": "云端备份失败"
+  },
+  "backup.restoreFailed": {
+    "message": "云端恢复失败"
+  },
+  "backup.diffTitle": {
+    "message": "恢复差异预览"
+  },
+  "backup.merge": {
+    "message": "合并"
+  },
+  "backup.replace": {
+    "message": "替换"
+  },
+  "backup.recoveryExported": {
+    "message": "加密恢复密钥已导出"
+  },
+  "backup.recoveryImported": {
+    "message": "本机恢复密钥已导入"
+  },
+  "backup.logoutConfirm": {
+    "message": "退出 Google 账号？不会删除云端备份，也不会删除本机 PageClip 数据。"
+  },
+  "backup.added": {
+    "message": "可新增"
+  },
+  "backup.same": {
+    "message": "相同"
+  },
+  "backup.conflicts": {
+    "message": "冲突"
+  },
+  "backup.localOnly": {
+    "message": "本机独有"
+  },
+  "recycle.batch": {
+    "message": "批次 $COUNT$ · 条目 $ENTRIES$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "entries": {
+        "content": "$1"
+      }
+    }
+  },
+  "recycle.empty": {
+    "message": "回收站为空"
+  },
+  "recycle.selectAll": {
+    "message": "全选"
+  },
+  "recycle.clearSelection": {
+    "message": "清除选择"
+  },
+  "recycle.restoreSelected": {
+    "message": "恢复已选"
+  },
+  "recycle.deleteSelected": {
+    "message": "永久删除已选"
+  },
+  "recycle.clear": {
+    "message": "清空回收站"
+  },
+  "recycle.clearConfirm": {
+    "message": "永久清空回收站？"
+  },
+  "shortcutCollectDescription": {
+    "message": "收藏当前页面到 PageClip"
+  },
+  "shortcutQuickDescription": {
+    "message": "加入 PageClip 快捷收藏夹"
+  },
+  "shortcutInboxDescription": {
+    "message": "加入 PageClip Inbox"
+  },
+  "shortcutOverlayDescription": {
+    "message": "打开或关闭 PageClip 网页侧栏"
+  },
+  "onboarding.title": {
+    "message": "欢迎使用 PageClip"
+  },
+  "onboarding.collectTitle": {
+    "message": "一键收藏当前页"
+  },
+  "onboarding.collectDesc": {
+    "message": "点击右上角 ＋ 或按 Ctrl+Shift+S 静默收藏，之后在列表里补充标签和备注。"
+  },
+  "onboarding.systemTitle": {
+    "message": "双页签两套体系"
+  },
+  "onboarding.systemDesc": {
+    "message": "「收藏」是你的私人收藏夹（标签 / 备注 / 文件夹 / 置顶）；「Chrome 书签」直接管理浏览器书签。"
+  },
+  "onboarding.searchTitle": {
+    "message": "全局搜索与拖拽"
+  },
+  "onboarding.searchDesc": {
+    "message": "顶部搜索框同时搜两套数据，输入 #标签名 可按标签过滤；条目与文件夹都支持拖拽。"
+  },
+  "onboarding.start": {
+    "message": "开始使用"
+  },
+  "search.total": {
+    "message": "共 $COUNT$ 条结果",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "search.tagPrefix": {
+    "message": "　标签过滤：$TAGS$",
+    "placeholders": {
+      "tags": {
+        "content": "$1"
+      }
+    }
+  },
+  "search.collectionGroup": {
+    "message": "插件收藏（$COUNT$）",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "search.bookmarkGroup": {
+    "message": "Chrome 书签（$COUNT$）",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "content.openSettings": {
+    "message": "打开 PageClip 设置"
+  },
+  "content.openManager": {
+    "message": "打开 PageClip"
+  },
+  "content.openManagerTab": {
+    "message": "在新标签页打开 PageClip"
+  },
+  "content.capture": {
+    "message": "永久收藏当前页"
+  },
+  "content.quick": {
+    "message": "加入快捷收藏夹"
+  },
+  "content.inbox": {
+    "message": "加入 PageClip Inbox"
+  },
+  "content.reading": {
+    "message": "同步到 Chrome Reading List"
+  },
+  "content.toggle": {
+    "message": "打开网页侧栏"
+  },
+  "content.close": {
+    "message": "关闭网页侧栏"
+  },
+  "content.copy": {
+    "message": "复制页面 URL"
+  },
+  "content.copied": {
+    "message": "页面 URL 已复制"
+  },
+  "content.toggleTitle": {
+    "message": "打开 PageClip 网页侧栏（Ctrl+Shift+P）"
+  },
+  "content.iframeTitle": {
+    "message": "PageClip 网页侧栏"
+  }
+}

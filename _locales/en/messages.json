@@ -1,0 +1,1078 @@
+{
+  "appName": {
+    "message": "PageClip"
+  },
+  "appDescription": {
+    "message": "A local-first Chrome sidebar for collections, quick access, Inbox, bookmarks, and encrypted backups."
+  },
+  "actionDefaultTitle": {
+    "message": "Open PageClip sidebar"
+  },
+  "app.name": {
+    "message": "PageClip"
+  },
+  "app.description": {
+    "message": "A local-first Chrome sidebar for collections, quick access, Inbox, bookmarks, and encrypted backups."
+  },
+  "nav.collection": {
+    "message": "Collection"
+  },
+  "nav.quick": {
+    "message": "Quick"
+  },
+  "nav.inbox": {
+    "message": "Inbox"
+  },
+  "nav.bookmarks": {
+    "message": "Chrome Bookmarks"
+  },
+  "nav.searchPlaceholder": {
+    "message": "Search collections and bookmarks; use #tag to filter"
+  },
+  "button.clearShort": {
+    "message": "Clear"
+  },
+  "button.collectCurrent": {
+    "message": "Save current page permanently"
+  },
+  "button.quickCurrent": {
+    "message": "Add to Quick Access (Ctrl+Shift+Q)"
+  },
+  "button.inboxCurrent": {
+    "message": "Add to PageClip Inbox (Ctrl+Shift+R)"
+  },
+  "button.settings": {
+    "message": "Settings and backup"
+  },
+  "button.closeOverlay": {
+    "message": "Close web sidebar"
+  },
+  "button.clear": {
+    "message": "Clear"
+  },
+  "button.open": {
+    "message": "Open"
+  },
+  "button.edit": {
+    "message": "Edit"
+  },
+  "button.delete": {
+    "message": "Delete"
+  },
+  "button.restore": {
+    "message": "Restore"
+  },
+  "button.permanentDelete": {
+    "message": "Delete permanently"
+  },
+  "button.save": {
+    "message": "Save"
+  },
+  "button.cancel": {
+    "message": "Cancel"
+  },
+  "button.confirm": {
+    "message": "Confirm"
+  },
+  "button.next": {
+    "message": "Next"
+  },
+  "button.selectAll": {
+    "message": "Select all"
+  },
+  "button.clearSelection": {
+    "message": "Clear"
+  },
+  "button.invert": {
+    "message": "Invert"
+  },
+  "button.completeRemove": {
+    "message": "Complete and remove"
+  },
+  "button.currentPage": {
+    "message": "Current page"
+  },
+  "button.tabGroup": {
+    "message": "Tab collection"
+  },
+  "button.readingList": {
+    "message": "Reading List"
+  },
+  "button.pin": {
+    "message": "Pin"
+  },
+  "button.unpin": {
+    "message": "Unpin"
+  },
+  "button.openQuick": {
+    "message": "Open quick item"
+  },
+  "button.restoreGroup": {
+    "message": "Restore tab collection"
+  },
+  "button.editGroup": {
+    "message": "Edit tab collection"
+  },
+  "button.deleteQuick": {
+    "message": "Delete quick item"
+  },
+  "button.removeFromGroup": {
+    "message": "Remove from collection"
+  },
+  "menu.quick": {
+    "message": "Add to PageClip Quick Access"
+  },
+  "menu.inbox": {
+    "message": "Add to PageClip Inbox"
+  },
+  "menu.reading": {
+    "message": "Sync to Chrome Reading List"
+  },
+  "menu.toggle": {
+    "message": "Toggle PageClip web sidebar"
+  },
+  "inbox.readStatus": {
+    "message": "Read"
+  },
+  "inbox.unreadStatus": {
+    "message": "Unread"
+  },
+  "inbox.markRead": {
+    "message": "Mark read"
+  },
+  "inbox.markUnread": {
+    "message": "Mark unread"
+  },
+  "feature.quickTitle": {
+    "message": "Quick Access"
+  },
+  "feature.inboxTitle": {
+    "message": "Inbox / Read later"
+  },
+  "feature.pageclipInbox": {
+    "message": "PageClip Inbox"
+  },
+  "feature.readingList": {
+    "message": "Chrome Reading List"
+  },
+  "empty.quickTitle": {
+    "message": "No quick items yet"
+  },
+  "empty.quickHint": {
+    "message": "Save common pages or the current window here for one-click restore."
+  },
+  "empty.group": {
+    "message": "Empty collection · click to edit or delete"
+  },
+  "empty.inbox": {
+    "message": "No saved items yet"
+  },
+  "empty.reading": {
+    "message": "Chrome Reading List is empty"
+  },
+  "empty.noMatch": {
+    "message": "No matching results"
+  },
+  "empty.noMatchHint": {
+    "message": "Try a shorter keyword; #tag only filters PageClip collections"
+  },
+  "dialog.deleteQuickTitle": {
+    "message": "Delete quick item"
+  },
+  "dialog.deleteInboxTitle": {
+    "message": "Delete Inbox item"
+  },
+  "dialog.deleteReadingTitle": {
+    "message": "Delete Reading List item"
+  },
+  "dialog.deleteMessage": {
+    "message": "Delete “$TITLE$”?",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.deleteGroupMessage": {
+    "message": "Delete “$TITLE$” and its $COUNT$ pages?",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.batchDeleteInboxTitle": {
+    "message": "Delete Inbox items"
+  },
+  "dialog.batchDeleteInboxMessage": {
+    "message": "Move $COUNT$ items to the recycle bin?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.batchCompleteInboxTitle": {
+    "message": "Complete Inbox items"
+  },
+  "dialog.batchCompleteInboxMessage": {
+    "message": "Complete and move $COUNT$ items to the recycle bin?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.editGroup": {
+    "message": "Edit tab collection"
+  },
+  "dialog.groupName": {
+    "message": "Collection name"
+  },
+  "dialog.name": {
+    "message": "Name"
+  },
+  "dialog.tabCount": {
+    "message": "$COUNT$ saveable tabs in the current window (original tabs stay open)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "dialog.needOneTab": {
+    "message": "Select at least one tab"
+  },
+  "toast.saved": {
+    "message": "Saved"
+  },
+  "toast.savedNamed": {
+    "message": "Saved: $TITLE$",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "toast.duplicateSaved": {
+    "message": "Already saved; updated saved time"
+  },
+  "toast.quickAdded": {
+    "message": "Added to Quick Access"
+  },
+  "toast.quickUpdated": {
+    "message": "Quick item updated"
+  },
+  "toast.inboxAdded": {
+    "message": "Added to PageClip Inbox"
+  },
+  "toast.inboxUpdated": {
+    "message": "Inbox item updated"
+  },
+  "toast.readingAdded": {
+    "message": "Synced to Chrome Reading List"
+  },
+  "toast.movedToRecycle": {
+    "message": "Moved to recycle bin · Undo"
+  },
+  "toast.groupTabRecycle": {
+    "message": "Moved to recycle bin · collection kept"
+  },
+  "toast.restored": {
+    "message": "Restored"
+  },
+  "toast.groupSaved": {
+    "message": "Tab collection saved"
+  },
+  "toast.groupSavedChanges": {
+    "message": "Collection saved"
+  },
+  "toast.deleted": {
+    "message": "Deleted"
+  },
+  "toast.batchRecycle": {
+    "message": "$COUNT$ items moved to the recycle bin",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "toast.restoredTabs": {
+    "message": "Restored $COUNT$ tabs",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "toast.opened": {
+    "message": "PageClip opened"
+  },
+  "toast.operationDone": {
+    "message": "Operation complete"
+  },
+  "toast.imported": {
+    "message": "Import complete"
+  },
+  "error.open": {
+    "message": "PageClip could not be opened"
+  },
+  "error.retry": {
+    "message": "Operation failed; please try again"
+  },
+  "error.readPage": {
+    "message": "Unable to read the current page"
+  },
+  "error.systemPage": {
+    "message": "System pages cannot be saved"
+  },
+  "error.systemAdd": {
+    "message": "System pages cannot be added to PageClip"
+  },
+  "error.unsupportedQuick": {
+    "message": "This page cannot be added to Quick Access"
+  },
+  "error.unsupportedInbox": {
+    "message": "This address cannot be saved to Inbox"
+  },
+  "error.noTabs": {
+    "message": "No saveable web tabs in the current window"
+  },
+  "error.readingUnsupported": {
+    "message": "Chrome Reading List is not supported here"
+  },
+  "error.permissionDenied": {
+    "message": "Reading List permission was not granted"
+  },
+  "error.operation": {
+    "message": "Operation failed: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "error.restore": {
+    "message": "Restore failed: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "error.sync": {
+    "message": "Sync failed: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "collection.recent": {
+    "message": "Recently saved"
+  },
+  "collection.time": {
+    "message": "Time"
+  },
+  "collection.timeSortTitle": {
+    "message": "Sort by saved time"
+  },
+  "collection.title": {
+    "message": "Collection"
+  },
+  "collection.all": {
+    "message": "All collections"
+  },
+  "collection.uncategorized": {
+    "message": "Uncategorized"
+  },
+  "collection.addFolder": {
+    "message": "New folder"
+  },
+  "collection.renameFolder": {
+    "message": "Rename folder"
+  },
+  "collection.deleteFolder": {
+    "message": "Delete folder"
+  },
+  "collection.sortTime": {
+    "message": "By time"
+  },
+  "collection.sortCustom": {
+    "message": "Custom"
+  },
+  "collection.tags": {
+    "message": "Tags"
+  },
+  "collection.note": {
+    "message": "Note"
+  },
+  "collection.url": {
+    "message": "URL"
+  },
+  "collection.folder": {
+    "message": "Folder"
+  },
+  "collection.empty": {
+    "message": "No collections yet"
+  },
+  "collection.emptyHint": {
+    "message": "Press Ctrl+Shift+S or click ＋ to save the current page"
+  },
+  "collection.noMatch": {
+    "message": "No collections match the filters"
+  },
+  "collection.clearTagFilter": {
+    "message": "Clear tag filter"
+  },
+  "collection.folderEmpty": {
+    "message": "This folder has no collections"
+  },
+  "collection.folderEmptyHint": {
+    "message": "Drag collection items to a folder on the left to move them"
+  },
+  "collection.collectCurrent": {
+    "message": "Save current page"
+  },
+  "collection.topFolder": {
+    "message": "New top-level folder"
+  },
+  "collection.newSubfolder": {
+    "message": "New subfolder"
+  },
+  "collection.rename": {
+    "message": "Rename"
+  },
+  "collection.openFolder": {
+    "message": "Open folder collection"
+  },
+  "collection.moveTo": {
+    "message": "Move to…"
+  },
+  "collection.openNewTab": {
+    "message": "Open in a new tab"
+  },
+  "collection.delete": {
+    "message": "Delete collection"
+  },
+  "collection.edit": {
+    "message": "Edit collection"
+  },
+  "collection.reasonPlaceholder": {
+    "message": "Why did you save this? Key details…"
+  },
+  "collection.tagsPlaceholder": {
+    "message": "Enter a tag and press Enter"
+  },
+  "collection.remove": {
+    "message": "Remove"
+  },
+  "collection.nameRequired": {
+    "message": "Name is required"
+  },
+  "collection.createdFolder": {
+    "message": "Folder created"
+  },
+  "collection.saved": {
+    "message": "Saved"
+  },
+  "collection.deleted": {
+    "message": "Deleted"
+  },
+  "collection.movedTop": {
+    "message": "Moved to top level"
+  },
+  "collection.customSort": {
+    "message": "Custom ordering enabled"
+  },
+  "collection.cannotDeleteUncategorized": {
+    "message": "Uncategorized cannot be deleted"
+  },
+  "collection.cannotMoveUncategorized": {
+    "message": "Cannot move into Uncategorized"
+  },
+  "collection.deleteFolderMessage": {
+    "message": "Delete folder “$TITLE$”? $COUNT$ collections will move to Uncategorized and subfolders will also be deleted.",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "collection.deleteMessage": {
+    "message": "Delete “$TITLE$”? (Chrome bookmarks are not affected)",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "collection.moveTitle": {
+    "message": "Move “$TITLE$” to…",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "collection.movedTo": {
+    "message": "Moved to “$TITLE$”",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.add": {
+    "message": "Bookmark"
+  },
+  "bookmarks.addFolder": {
+    "message": "Folder"
+  },
+  "bookmarks.quickAdd": {
+    "message": "Add the current tab to the bookmarks bar"
+  },
+  "bookmarks.saveCurrent": {
+    "message": "Save current page"
+  },
+  "bookmarks.unnamed": {
+    "message": "Unnamed"
+  },
+  "bookmarks.newHere": {
+    "message": "New bookmark here"
+  },
+  "bookmarks.rename": {
+    "message": "Rename"
+  },
+  "bookmarks.edit": {
+    "message": "Edit"
+  },
+  "bookmarks.move": {
+    "message": "Move to folder"
+  },
+  "bookmarks.delete": {
+    "message": "Delete"
+  },
+  "bookmarks.new": {
+    "message": "New bookmark"
+  },
+  "bookmarks.newChildFolder": {
+    "message": "New subfolder"
+  },
+  "bookmarks.openNew": {
+    "message": "Open in a new tab"
+  },
+  "bookmarks.create": {
+    "message": "New bookmark"
+  },
+  "bookmarks.createFolder": {
+    "message": "New folder"
+  },
+  "bookmarks.editTitle": {
+    "message": "Edit bookmark"
+  },
+  "bookmarks.renameTitle": {
+    "message": "Rename folder"
+  },
+  "bookmarks.name": {
+    "message": "Name"
+  },
+  "bookmarks.bookmarkName": {
+    "message": "Bookmark name"
+  },
+  "bookmarks.folderName": {
+    "message": "Folder name"
+  },
+  "bookmarks.url": {
+    "message": "URL"
+  },
+  "bookmarks.urlPlaceholder": {
+    "message": "https://…"
+  },
+  "bookmarks.urlRequired": {
+    "message": "URL is required"
+  },
+  "bookmarks.nameRequired": {
+    "message": "Name is required"
+  },
+  "bookmarks.created": {
+    "message": "Bookmark created"
+  },
+  "bookmarks.folderCreated": {
+    "message": "Folder created"
+  },
+  "bookmarks.saved": {
+    "message": "Saved"
+  },
+  "bookmarks.deleted": {
+    "message": "Deleted"
+  },
+  "bookmarks.deleteBookmark": {
+    "message": "Delete bookmark"
+  },
+  "bookmarks.deleteFolder": {
+    "message": "Delete folder"
+  },
+  "bookmarks.deleteBookmarkConfirm": {
+    "message": "Delete bookmark “$TITLE$”?",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.deleteFolderConfirm": {
+    "message": "Delete folder “$TITLE$” and its $COUNT$ bookmarks?",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      },
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.moved": {
+    "message": "Moved to “$TITLE$”",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.moveTitle": {
+    "message": "Move “$TITLE$” to…",
+    "placeholders": {
+      "title": {
+        "content": "$1"
+      }
+    }
+  },
+  "bookmarks.topLevel": {
+    "message": "(Top level)"
+  },
+  "bookmarks.cannotMoveChild": {
+    "message": "Cannot move a folder into its own subfolder"
+  },
+  "bookmarks.addedToBar": {
+    "message": "Added to bookmarks bar"
+  },
+  "settings.title": {
+    "message": "PageClip Settings"
+  },
+  "settings.subtitle": {
+    "message": "Settings and data"
+  },
+  "settings.eyebrow": {
+    "message": "SETTINGS & DATA"
+  },
+  "settings.hero": {
+    "message": "Turn your saved pages into a workflow"
+  },
+  "settings.heroHint": {
+    "message": "Backups, imports, encrypted cloud backup, and the recycle bin live here. Local data stays in this browser by default; cloud backup is always manual."
+  },
+  "settings.stats": {
+    "message": "Data statistics"
+  },
+  "settings.statsHint": {
+    "message": "PageClip data is stored locally in chrome.storage.local."
+  },
+  "settings.permanent": {
+    "message": "Permanent"
+  },
+  "settings.quickSingles": {
+    "message": "Quick pages"
+  },
+  "settings.quickGroups": {
+    "message": "Quick collections"
+  },
+  "settings.unread": {
+    "message": "Inbox unread"
+  },
+  "settings.read": {
+    "message": "Inbox read"
+  },
+  "settings.folders": {
+    "message": "Folders"
+  },
+  "settings.tags": {
+    "message": "Tags"
+  },
+  "settings.recycleEntries": {
+    "message": "Recycle entries"
+  },
+  "settings.backup": {
+    "message": "Backup and restore"
+  },
+  "settings.backupHint": {
+    "message": "JSON keeps collections, folders, Quick Access, and Inbox; import supports merge or replace."
+  },
+  "settings.exportJson": {
+    "message": "Export JSON backup"
+  },
+  "settings.importJson": {
+    "message": "Import JSON backup"
+  },
+  "settings.importBookmarks": {
+    "message": "Import browser bookmarks"
+  },
+  "settings.bookmarksHint": {
+    "message": "Copy into PageClip only; Chrome native bookmarks are not modified."
+  },
+  "settings.readBookmarks": {
+    "message": "Read current browser bookmarks"
+  },
+  "settings.chooseBookmarks": {
+    "message": "Choose bookmarks.html"
+  },
+  "settings.htmlCsv": {
+    "message": "HTML / CSV import and export"
+  },
+  "settings.importCollection": {
+    "message": "Import collection HTML/CSV"
+  },
+  "settings.importQuick": {
+    "message": "Import Quick HTML/CSV"
+  },
+  "settings.importInbox": {
+    "message": "Import Inbox HTML/CSV"
+  },
+  "settings.exportCollectionHtml": {
+    "message": "Export collection HTML"
+  },
+  "settings.exportCollectionCsv": {
+    "message": "Export collection CSV"
+  },
+  "settings.exportQuickHtml": {
+    "message": "Export Quick HTML"
+  },
+  "settings.exportQuickCsv": {
+    "message": "Export Quick CSV"
+  },
+  "settings.exportInboxHtml": {
+    "message": "Export Inbox HTML"
+  },
+  "settings.exportInboxCsv": {
+    "message": "Export Inbox CSV"
+  },
+  "settings.exportChromeHtml": {
+    "message": "Export Chrome bookmarks HTML"
+  },
+  "settings.exportChromeCsv": {
+    "message": "Export Chrome bookmarks CSV"
+  },
+  "settings.htmlCsvHint": {
+    "message": "Import or export PageClip collections, Quick Access, and Inbox; bookmarks.html is the browser-bookmark importer."
+  },
+  "settings.recycle": {
+    "message": "Recycle bin"
+  },
+  "settings.recycleHint": {
+    "message": "Deletes and completed Inbox items are kept for 30 days."
+  },
+  "settings.shortcuts": {
+    "message": "Shortcuts and storage"
+  },
+  "settings.shortcutsText": {
+    "message": "Ctrl+Shift+S: Permanent collection   Ctrl+Shift+Q: Quick Access   Ctrl+Shift+R: Inbox   Ctrl+Shift+P: Web sidebar"
+  },
+  "settings.shortcutsHint": {
+    "message": "Change keyboard shortcuts in Chrome extension shortcuts."
+  },
+  "settings.openShortcuts": {
+    "message": "Open shortcut settings"
+  },
+  "settings.localNote": {
+    "message": "Data stays on this device unless you manually start an encrypted cloud backup."
+  },
+  "settings.cloud": {
+    "message": "Google Drive cloud backup"
+  },
+  "settings.cloudHint": {
+    "message": "Sign in with Google OAuth; backups are uploaded to the Drive app data folder as ciphertext."
+  },
+  "settings.connected": {
+    "message": "Connected: $EMAIL$",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings.notConnected": {
+    "message": "No Google account connected"
+  },
+  "settings.cloudFile": {
+    "message": "Cloud backup exists · modified $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings.localLast": {
+    "message": "Last backup recorded locally: $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings.noCloud": {
+    "message": "No backup uploaded yet"
+  },
+  "settings.connect": {
+    "message": "Connect Google Drive"
+  },
+  "settings.manualBackup": {
+    "message": "Manual backup"
+  },
+  "settings.manualRestore": {
+    "message": "Manual restore"
+  },
+  "settings.exportRecovery": {
+    "message": "Export device recovery key"
+  },
+  "settings.importRecovery": {
+    "message": "Import device recovery key"
+  },
+  "settings.signOut": {
+    "message": "Sign out and switch account"
+  },
+  "settings.cloudNote": {
+    "message": "Choose password or device-key encryption for each backup. Device-key restore across devices requires an encrypted recovery-key file."
+  },
+  "settings.language": {
+    "message": "Language"
+  },
+  "settings.languageHint": {
+    "message": "Follow Chrome automatically, or choose a fixed language for PageClip."
+  },
+  "settings.localeAuto": {
+    "message": "Automatic"
+  },
+  "settings.localeZh": {
+    "message": "中文"
+  },
+  "settings.localeEn": {
+    "message": "English"
+  },
+  "backup.passwordMode": {
+    "message": "Backup password encryption"
+  },
+  "backup.deviceMode": {
+    "message": "Chrome device-key encryption"
+  },
+  "backup.passwordHint": {
+    "message": "Enter the password for each backup; only a local verifier is stored."
+  },
+  "backup.deviceHint": {
+    "message": "Restores directly in this browser; import an encrypted recovery key on another device."
+  },
+  "backup.passwordPlaceholder": {
+    "message": "At least 8 characters"
+  },
+  "backup.passwordConfirm": {
+    "message": "Confirm"
+  },
+  "backup.passwordWarning": {
+    "message": "PageClip does not store passwords. Without the password or a recovery key, the backup cannot be decrypted."
+  },
+  "backup.overwrite": {
+    "message": "A PageClip-latest.enc file exists. Overwrite it with current local data?"
+  },
+  "backup.restoreReplace": {
+    "message": "Replace will overwrite local PageClip data. Continue?"
+  },
+  "backup.success": {
+    "message": "Backup succeeded: $SIZE$ KB",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "backup.cloudFailed": {
+    "message": "Cloud backup failed"
+  },
+  "backup.restoreFailed": {
+    "message": "Cloud restore failed"
+  },
+  "backup.diffTitle": {
+    "message": "Restore difference preview"
+  },
+  "backup.merge": {
+    "message": "Merge"
+  },
+  "backup.replace": {
+    "message": "Replace"
+  },
+  "backup.recoveryExported": {
+    "message": "Encrypted recovery key exported"
+  },
+  "backup.recoveryImported": {
+    "message": "Device recovery key imported"
+  },
+  "backup.logoutConfirm": {
+    "message": "Sign out of Google? Cloud and local PageClip data will not be deleted."
+  },
+  "backup.added": {
+    "message": "Added"
+  },
+  "backup.same": {
+    "message": "Same"
+  },
+  "backup.conflicts": {
+    "message": "Conflicts"
+  },
+  "backup.localOnly": {
+    "message": "Local only"
+  },
+  "recycle.batch": {
+    "message": "Batches $COUNT$ · Entries $ENTRIES$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "entries": {
+        "content": "$1"
+      }
+    }
+  },
+  "recycle.empty": {
+    "message": "Recycle bin is empty"
+  },
+  "recycle.selectAll": {
+    "message": "Select all"
+  },
+  "recycle.clearSelection": {
+    "message": "Clear selection"
+  },
+  "recycle.restoreSelected": {
+    "message": "Restore selected"
+  },
+  "recycle.deleteSelected": {
+    "message": "Delete selected permanently"
+  },
+  "recycle.clear": {
+    "message": "Clear recycle bin"
+  },
+  "recycle.clearConfirm": {
+    "message": "Permanently clear the recycle bin?"
+  },
+  "shortcutCollectDescription": {
+    "message": "Save the current page to PageClip"
+  },
+  "shortcutQuickDescription": {
+    "message": "Add to PageClip Quick Access"
+  },
+  "shortcutInboxDescription": {
+    "message": "Add to PageClip Inbox"
+  },
+  "shortcutOverlayDescription": {
+    "message": "Toggle the PageClip web sidebar"
+  },
+  "onboarding.title": {
+    "message": "Welcome to PageClip"
+  },
+  "onboarding.collectTitle": {
+    "message": "Save the current page"
+  },
+  "onboarding.collectDesc": {
+    "message": "Click ＋ or press Ctrl+Shift+S to save silently, then add tags and notes in the list."
+  },
+  "onboarding.systemTitle": {
+    "message": "Two clear systems"
+  },
+  "onboarding.systemDesc": {
+    "message": "Collection is your private library; Chrome Bookmarks manages browser bookmarks directly."
+  },
+  "onboarding.searchTitle": {
+    "message": "Search and drag"
+  },
+  "onboarding.searchDesc": {
+    "message": "Search both systems from the top bar; use #tag to filter collections. Items and folders support drag and drop."
+  },
+  "onboarding.start": {
+    "message": "Get started"
+  },
+  "search.total": {
+    "message": "$COUNT$ results",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "search.tagPrefix": {
+    "message": "　Tag filter: $TAGS$",
+    "placeholders": {
+      "tags": {
+        "content": "$1"
+      }
+    }
+  },
+  "search.collectionGroup": {
+    "message": "PageClip collection ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "search.bookmarkGroup": {
+    "message": "Chrome bookmarks ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "content.openSettings": {
+    "message": "Open PageClip settings"
+  },
+  "content.openManager": {
+    "message": "Open PageClip"
+  },
+  "content.openManagerTab": {
+    "message": "Open PageClip in a new tab"
+  },
+  "content.capture": {
+    "message": "Save current page"
+  },
+  "content.quick": {
+    "message": "Add to PageClip Quick Access"
+  },
+  "content.inbox": {
+    "message": "Add to PageClip Inbox"
+  },
+  "content.reading": {
+    "message": "Sync to Chrome Reading List"
+  },
+  "content.toggle": {
+    "message": "Open web sidebar"
+  },
+  "content.close": {
+    "message": "Close web sidebar"
+  },
+  "content.copy": {
+    "message": "Copy page URL"
+  },
+  "content.copied": {
+    "message": "Page URL copied"
+  },
+  "content.toggleTitle": {
+    "message": "Open the PageClip web sidebar (Ctrl+Shift+P)"
+  },
+  "content.iframeTitle": {
+    "message": "PageClip web sidebar"
+  }
+}

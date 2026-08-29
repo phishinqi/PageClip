@@ -141,6 +141,7 @@
 
   const chromeMock = {
     runtime: { id: 'mock-extension-id', getURL(path) { return String(path || ''); } },
+    i18n: { getUILanguage() { return window.__pageclipMockLocale || 'zh-CN'; } },
     identity: {
       async getAuthToken() { if (!mockAuthEnabled) throw new Error('模拟 OAuth 被拒绝'); return { token: 'mock-google-token' }; },
       async getProfileUserInfo() { return { email: 'pageclip.mock@gmail.com', id: 'mock-account' }; },
