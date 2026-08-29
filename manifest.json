@@ -1,0 +1,116 @@
+{
+  "manifest_version": 3,
+  "name": "PageClip",
+  "version": "1.4.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3CMcQCvjAsX3yWTMMx3AZ0VaD47QOrvXozP1XPdDB1DWU4IZmh1rLveRg+roQcdT1gYufRsG6G2uPJFTTtIgq/x9Cw54D6RFg/m1A9ylzDmWiniWEf7iguEMLucM5rmD9/dgmeXUvPXj9ZPe9GoCLWLCz76b+YEHQVr3CGhivdItmnhMAMSNPib2u4iRUpWUpkOZ3+eOO84ykbkyLmRXO+CsyZlQT5OhTtuDEynwnlCST7FdxqrEfQEZ64WeR8Caz/+zEMNNQL/4ic6wrCskCYmiv60sot/Qio/16RvD7Yhu5lAyVf9cTOAGaL9ffOX2jDIcnIDGUCmhG6s66WCkMwIDAQAB",
+  "description": "在侧边栏浏览、搜索和管理 Chrome 书签，并拥有独立收藏体系：标签、备注、文件夹、置顶、全局搜索与备份。",
+  "minimum_chrome_version": "114",
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "tabs",
+    "favicon",
+    "contextMenus",
+    "tabGroups",
+    "scripting",
+    "alarms",
+    "identity",
+    "identity.email"
+  ],
+  "optional_permissions": [
+    "readingList"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content/bridge.js"
+      ],
+      "css": [
+        "content/bridge.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "sidepanel.html",
+        "sidepanel.js",
+        "options.html",
+        "options.js",
+        "css/*",
+        "js/*",
+        "icons/*",
+        "logo.svg"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "打开 PageClip 侧边栏"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "collect-current-page": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "收藏当前页面到 PageClip"
+    },
+    "add-to-quick-access": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Q",
+        "mac": "Command+Shift+Q"
+      },
+      "description": "加入 PageClip 快捷收藏夹"
+    },
+    "add-to-inbox": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+R",
+        "mac": "Command+Shift+R"
+      },
+      "description": "加入 PageClip Inbox"
+    },
+    "toggle-pageclip-overlay": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "打开或关闭 PageClip 网页侧栏"
+    }
+  },
+  "oauth2": {
+    "client_id": "996608683771-ab2q6ld3qnh85ckd31fcrgeifbid9pp1.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.appdata"
+    ]
+  }
+}

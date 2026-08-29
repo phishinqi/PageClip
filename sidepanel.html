@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PageClip</title>
+  <link rel="stylesheet" href="css/sidepanel.css" />
+  <!-- 扩展环境直接运行；无 chrome API 的本地预览环境自动加载 mock -->
+  <script src="js/boot.js"></script>
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand-row">
+      <img id="logo" src="logo.svg" alt="PageClip Logo" />
+      <span class="brand">PageClip</span>
+      <span class="flex1"></span>
+      <button id="btnCollect" class="icon-btn accent" title="永久收藏当前页"></button>
+      <button id="btnQuick" class="icon-btn" title="加入快捷收藏夹（Ctrl+Shift+Q）"></button>
+      <button id="btnInbox" class="icon-btn" title="加入 PageClip Inbox（Ctrl+Shift+R）"></button>
+      <button id="btnSettings" class="icon-btn" title="设置与备份"></button>
+      <button id="btnEmbeddedClose" class="icon-btn embedded-close" title="收起网页侧栏" hidden></button>
+    </div>
+    <div class="search-row">
+      <span id="searchIcon"></span>
+      <input id="searchInput" type="text" placeholder="搜索收藏与书签，#标签名 按标签过滤" spellcheck="false" />
+      <button id="btnClearSearch" class="icon-btn" title="清空" hidden></button>
+    </div>
+    <nav id="tabs">
+      <button class="tab active" data-tab="collection">收藏</button>
+      <button class="tab" data-tab="quick">快捷</button>
+      <button class="tab" data-tab="inbox">Inbox</button>
+      <button class="tab" data-tab="bookmarks">Chrome 书签</button>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section id="view-collection" class="view active">
+      <aside id="rail"></aside>
+      <div id="col-main">
+        <div id="col-header"></div>
+        <div id="col-scroll" class="scroll"></div>
+      </div>
+    </section>
+
+    <section id="view-quick" class="view" hidden>
+      <div id="quick-root" class="feature-scroll scroll"></div>
+    </section>
+
+    <section id="view-inbox" class="view" hidden>
+      <div id="inbox-root" class="feature-scroll scroll"></div>
+    </section>
+
+    <section id="view-bookmarks" class="view" hidden>
+      <div id="bm-scroll" class="scroll"></div>
+    </section>
+
+    <section id="view-search" class="view" hidden>
+      <div id="search-scroll" class="scroll"></div>
+    </section>
+  </main>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+/* 页面内嵌侧栏的外壳样式由 content/bridge.js 注入到 Shadow DOM，
+   此文件作为 content_scripts CSS 入口，确保宿主元素不受页面默认样式影响。 */
+pageclip-host {
+  all: initial !important;
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: block !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  contain: none !important;
+  z-index: 2147483646 !important;
+}

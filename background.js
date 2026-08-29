@@ -1,0 +1,182 @@
+// MV3 Service Worker：严格无状态。
+// 不用任何全局变量保存业务数据，每次事件现用现读 chrome.storage.local，
+// 随时可能被系统终止也不会留下脏状态。
+import {
+  collectIntoStorage,
+  addQuickItem,
+  addInboxItem,
+  isCollectableUrl,
+  ensureDataInitialized,
+  pruneRecycleBin,
+} from './js/store.js';
+
+const DEFAULT_TITLE = '打开 PageClip 侧边栏';
+
+async function configureSidePanel() {
+  const api = globalThis.chrome?.sidePanel;
+  const setPanelBehavior = api?.setPanelBehavior;
+  if (typeof setPanelBehavior !== 'function') return false;
+  try {
+    await Promise.resolve(
+      setPanelBehavior.call(api, { openPanelOnActionClick: true })
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function openFallbackPage(openSettings = false) {
+  const pageUrl = chrome.runtime.getURL('sidepanel.html');
+  const optionsUrl = chrome.runtime.getURL('options.html');
+  const targetUrl = openSettings ? optionsUrl : pageUrl;
+  const [existing] = await chrome.tabs.query({ url: `${targetUrl}*` });
+  if (existing) {
+    await chrome.tabs.update(existing.id, { active: true, url: targetUrl });
+  } else {
+    await chrome.tabs.create({ url: targetUrl });
+  }
+}
+
+function getCurrentTab() {
+  return chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => tab);
+}
+
+async function captureCurrent(kind, source) {
+  const tab = source || await getCurrentTab();
+  if (!tab || !tab.url) return flashBadge('deny', '无法读取当前页面');
+  if (!isCollectableUrl(tab.url)) return flashBadge('deny', '系统页面无法加入 PageClip');
+  const payload = { url: tab.url, title: tab.title || tab.url, favIconUrl: tab.favIconUrl || '' };
+  if (kind === 'quick') await addQuickItem(payload);
+  else if (kind === 'inbox') await addInboxItem(payload);
+  else await collectIntoStorage(payload);
+  flashBadge('ok', kind === 'quick' ? '已加入快捷收藏夹' : kind === 'inbox' ? '已加入 Inbox' : '已收藏');
+}
+
+function createMenus() {
+  const menus = chrome.contextMenus;
+  if (!menus || typeof menus.create !== 'function') return;
+  const create = () => {
+    menus.create({ id: 'pageclip-quick', title: '加入 PageClip 快捷收藏夹', contexts: ['page', 'tab'] });
+    menus.create({ id: 'pageclip-inbox', title: '加入 PageClip Inbox', contexts: ['page', 'tab'] });
+    menus.create({ id: 'pageclip-reading', title: '同步到 Chrome Reading List', contexts: ['page', 'tab', 'link'] });
+    menus.create({ id: 'pageclip-toggle', title: '打开/关闭 PageClip 网页侧栏', contexts: ['page', 'tab'] });
+  };
+  try {
+    const removed = typeof menus.removeAll === 'function' ? menus.removeAll() : null;
+    Promise.resolve(removed).catch(() => {}).finally(create);
+  } catch {
+    create();
+  }
+}
+
+async function syncReadingList(url, title) {
+  if (!chrome.readingList?.addEntry || !chrome.permissions?.request) throw new Error('当前浏览器不支持 Chrome Reading List');
+  const has = chrome.permissions.contains ? await chrome.permissions.contains({ permissions: ['readingList'] }) : false;
+  if (!has && !(await chrome.permissions.request({ permissions: ['readingList'] }))) throw new Error('未授予 Reading List 权限');
+  await chrome.readingList.addEntry({ url, title: title || url, hasBeenRead: false });
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  configureSidePanel().catch(() => {});
+  ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
+  chrome.alarms?.create?.('pageclip-prune-recycle', { periodInMinutes: 24 * 60 });
+  createMenus();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  configureSidePanel().catch(() => {});
+  ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
+  chrome.alarms?.create?.('pageclip-prune-recycle', { periodInMinutes: 24 * 60 });
+  createMenus();
+});
+
+chrome.alarms?.onAlarm?.addListener((alarm) => {
+  if (alarm.name === 'pageclip-prune-recycle') pruneRecycleBin().catch(() => {});
+});
+
+chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
+  try {
+    const url = info.linkUrl || info.pageUrl || tab?.url;
+    const source = url ? { url, title: tab?.title || url, favIconUrl: tab?.favIconUrl || '' } : tab;
+    if (info.menuItemId === 'pageclip-toggle') {
+      if (tab?.id) await chrome.tabs.sendMessage(tab.id, { type: 'pageclip:toggle' });
+      return;
+    }
+    if (info.menuItemId === 'pageclip-reading') {
+      await syncReadingList(source.url, source.title);
+      flashBadge('ok', '已同步到 Chrome Reading List');
+      return;
+    }
+    await captureCurrent(info.menuItemId === 'pageclip-quick' ? 'quick' : 'inbox', source);
+  } catch (err) {
+    flashBadge('deny', err.message || String(err));
+  }
+});
+
+chrome.action.onClicked.addListener(async () => {
+  // Brave 等未实现 chrome.sidePanel 的 Chromium 浏览器回退到完整管理页。
+  if (!await configureSidePanel()) {
+    try {
+      await openFallbackPage();
+    } catch {
+      // 让扩展其余功能继续可用；页面打开失败不会影响快捷键收藏。
+    }
+  }
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message?.type || !['capture-current', 'capture-quick', 'capture-inbox', 'sync-reading', 'open-manager', 'open-settings'].includes(message.type)) return false;
+  (async () => {
+    const payload = message.payload || sender.tab || await getCurrentTab();
+    if (message.type === 'open-manager' || message.type === 'open-settings') {
+      await openFallbackPage(message.type === 'open-settings');
+      return { ok: true, message: message.type === 'open-settings' ? '已打开 PageClip 设置' : '已打开 PageClip' };
+    }
+    if (!payload?.url) throw new Error('无法读取当前页面');
+    if (message.type === 'sync-reading') {
+      await syncReadingList(payload.url, payload.title);
+      return { ok: true, message: '已同步到 Chrome Reading List' };
+    }
+    await captureCurrent(
+      message.type === 'capture-current' ? 'collect' : message.type === 'capture-quick' ? 'quick' : 'inbox',
+      payload
+    );
+    return { ok: true, message: message.type === 'capture-quick' ? '已加入快捷收藏夹' : message.type === 'capture-inbox' ? '已加入 Inbox' : '已收藏' };
+  })().then((result) => sendResponse(result)).catch((error) => sendResponse({ ok: false, message: error.message || String(error) }));
+  return true;
+});
+
+chrome.commands.onCommand.addListener(async (command) => {
+  try {
+    if (command === 'collect-current-page') await captureCurrent('collect');
+    else if (command === 'add-to-quick-access') await captureCurrent('quick');
+    else if (command === 'add-to-inbox') await captureCurrent('inbox');
+    else if (command === 'toggle-pageclip-overlay') {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id && /^(https?):/i.test(tab.url || '')) {
+        await chrome.tabs.sendMessage(tab.id, { type: 'pageclip:toggle' }).catch(async () => {
+          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content/bridge.js'] }).catch(() => {});
+        });
+      }
+    }
+  } catch (err) {
+    flashBadge('deny', '操作失败：' + (err && err.message ? err.message : err));
+  }
+});
+
+// 角标反馈：badge 空间小，长文字放 action title。
+// 成功 = 绿色 ✓；失败 = 红色 ! + title 说明，2 秒后恢复。
+function flashBadge(kind, title) {
+  const ok = kind === 'ok';
+  const apply = async () => {
+    await chrome.action.setBadgeBackgroundColor({ color: ok ? '#1e8e3e' : '#d93025' });
+    await chrome.action.setBadgeText({ text: ok ? '✓' : '!' });
+    if (!ok) await chrome.action.setTitle({ title });
+  };
+  apply().catch(() => {});
+  setTimeout(() => {
+    chrome.action.setBadgeText({ text: '' }).catch(() => {});
+    if (!ok) chrome.action.setTitle({ title: DEFAULT_TITLE }).catch(() => {});
+  }, 2000);
+}

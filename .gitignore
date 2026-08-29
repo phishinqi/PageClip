@@ -1,0 +1,17 @@
+# Local/editor/runtime
+.zcode/
+node_modules/
+release/
+*.tmp
+*.log
+
+# Bundled reference projects not part of PageClip
+VertiTab/
+Bookmark_Sidebar-master/
+gui-test-screenshots/
+
+# Local secrets and browser state
+.env
+.env.*
+*.pem
+*.key
