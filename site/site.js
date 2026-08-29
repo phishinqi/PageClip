@@ -5,6 +5,10 @@
   let lang = saved === 'en' || saved === 'zh' ? saved : (browserLang.startsWith('zh') ? 'zh' : 'en');
   const apply = () => {
     document.documentElement.dataset.lang = lang;
+    document.querySelectorAll('.lang-zh, .lang-en').forEach((node) => {
+      const isEnglish = node.classList.contains('lang-en');
+      node.hidden = isEnglish ? lang !== 'en' : lang !== 'zh';
+    });
     document.querySelectorAll('[data-lang-toggle]').forEach((button) => {
       button.textContent = lang === 'zh' ? 'English' : '中文';
       button.setAttribute('aria-label', lang === 'zh' ? 'Switch to English' : '切换为中文');
