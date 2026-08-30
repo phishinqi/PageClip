@@ -61,6 +61,19 @@
 - **`chrome://` 等系统页能收藏吗？** 插件收藏仅支持 http/https/file 页面；这类页面按快捷键会显示红色 `!` 角标提示。
 - **重复收藏同一网址？** 不会产生重复条目，只会更新收藏时间与标题。
 
+## Google Drive OAuth 配置
+
+Google Drive 备份在 Chrome 使用 `chrome.identity.getAuthToken()`，在 Brave 回退到 `chrome.identity.launchWebAuthFlow()`；不要把 Desktop/Native App 的 custom URI 流程直接交给 Chrome 的 `getAuthToken()`。首次配置时：
+
+1. 先在 `chrome://extensions` 加载本目录，复制页面显示的 **Extension ID**。当前仓库的固定 `key` 对应 ID 为 `fimhgjmocneioennilphfkdejdebkmfe`。
+2. 在 Google Cloud 的 OAuth Client 页面创建 **Chrome Extension** 类型 client。
+3. 将上一步的 Extension ID 填入 **Item ID**，启用 Google Drive API，并将生成的 client ID 填入 `manifest.json` 的 `oauth2.client_id`。
+4. 修改 `manifest.json` 后，在 `chrome://extensions` 点击 PageClip 的「重新加载」，再回到设置页连接 Google。
+
+如果 Chrome 报错 `Custom URI scheme is not supported on Chrome apps` 或错误 400 `invalid_request`，先确认扩展 ID 和 Chrome Extension Client 的 Item ID。Chrome 正常、Brave 失败时，这是 Brave 的 `getAuthToken()` 兼容问题；PageClip 会回退到 Web OAuth 流程。Brave 使用的 Web OAuth Client 必须额外允许回调地址 `https://fimhgjmocneioennilphfkdejdebkmfe.chromiumapp.org/`。
+
+OAuth client secret 不能放入 Chrome 扩展或提交到 GitHub；扩展内只能使用公开的 client ID。如果 secret 曾经出现在聊天、日志或仓库中，应立即在 Google Cloud 撤销并重新生成。
+
 ## 开发者
 
 - 目录结构见 `manifest.json` / `js/`（store 数据层、collection 收藏页签、bookmarks 书签页签、tree 拖拽、search 搜索、ui 基建）。

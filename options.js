@@ -7,6 +7,7 @@ import { importBrowserBookmarks, importBookmarksHtml } from './js/bookmark-impor
 import { initI18n, applyI18n, onLocaleChanged, setLocalePreference, getLocalePreference, translateText, t } from './js/i18n.js';
 import { encryptBackup, decryptBackup, createPasswordVerifier, verifyBackupPassword, getOrCreateDeviceKey, exportEncryptedRecoveryKey, importEncryptedRecoveryKey } from './js/crypto-backup.js';
 import { connectGoogle, getConnectedAccount, signOutGoogle, uploadLatestBackup, downloadLatestBackup, getCloudBackupStatus } from './js/cloud-backup.js';
+import { getCloudCardState } from './js/cloud-status.js';
 
 const root = document.getElementById('options-root');
 let data = null;
@@ -75,19 +76,17 @@ function languageCard() {
 }
 
 function cloudCard() {
-  const account = cloudStatus.account?.email || data.settings?.cloudBackup?.googleAccountEmail || '';
-  const file = cloudStatus.file;
-  const localLast = data.settings?.cloudBackup?.lastBackupAt;
-  const statusText = cloudStatus.error ? t('settings.cloudError', { ERROR: cloudStatus.error }) : file ? t('settings.cloudFile', { TIME: new Date(file.modifiedTime).toLocaleString() }) : localLast ? t('settings.localLast', { TIME: new Date(localLast).toLocaleString() }) : t('settings.noCloud');
+  const view = getCloudCardState(cloudStatus, data.settings?.cloudBackup || {});
+  const connected = view.connected;
   return card(t('settings.cloud'), t('settings.cloudHint'), h('div', { class: 'cloud-backup' },
-    h('div', { class: 'cloud-status' }, h('strong', { text: account ? t('settings.connected', { EMAIL: account }) : t('settings.notConnected') }), h('span', { class: 'desc', text: statusText })),
+    h('div', { class: 'cloud-status' }, h('strong', { text: t(view.titleKey, view.titleValues) }), h('span', { class: 'desc', text: t(view.statusKey, view.statusValues) })),
     actions(
-      account ? null : button(t('settings.connect'), 'primary', connectCloud),
-      account ? button(t('settings.manualBackup'), 'primary', runCloudBackup) : null,
-      account ? button(t('settings.manualRestore'), '', runCloudRestore) : null,
-      account ? button(t('settings.exportRecovery'), '', exportRecoveryKey) : null,
-      account ? button(t('settings.importRecovery'), '', importRecoveryKey) : null,
-      account ? button(t('settings.signOut'), 'danger', disconnectCloud) : null
+      connected ? null : button(t('settings.connect'), 'primary', connectCloud),
+      connected ? button(t('settings.manualBackup'), 'primary', runCloudBackup) : null,
+      connected ? button(t('settings.manualRestore'), '', runCloudRestore) : null,
+      connected ? button(t('settings.exportRecovery'), '', exportRecoveryKey) : null,
+      connected ? button(t('settings.importRecovery'), '', importRecoveryKey) : null,
+      connected ? button(t('settings.signOut'), 'danger', disconnectCloud) : null
     ),
     h('p', { class: 'desc cloud-note', text: t('settings.cloudNote') })
   ));

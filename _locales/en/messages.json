@@ -807,8 +807,19 @@
       }
     }
   },
+  "settings_connectedNoAccount": {
+    "message": "Google Drive connected (account information unavailable)"
+  },
   "settings_notConnected": {
     "message": "No Google account connected"
+  },
+  "settings_cloudFileNeedsConnection": {
+    "message": "Cloud backup exists · modified $TIME$ · connect an account to restore",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
   },
   "settings_cloudFile": {
     "message": "Cloud backup exists · modified $TIME$",

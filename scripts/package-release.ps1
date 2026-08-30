@@ -1,8 +1,12 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+& powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'check-syntax.ps1')
+& node (Join-Path $PSScriptRoot 'test-oauth.mjs')
+& node (Join-Path $PSScriptRoot 'test-cloud-backup.mjs')
+& node (Join-Path $PSScriptRoot 'test-cloud-status.mjs')
 $releaseDir = Join-Path $root 'release'
-$stage = Join-Path $releaseDir 'PageClip-v1.5.0'
-$zip = Join-Path $releaseDir 'PageClip-v1.5.0.zip'
+$stage = Join-Path $releaseDir 'PageClip-v1.5.1'
+$zip = Join-Path $releaseDir 'PageClip-v1.5.1.zip'
 
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
@@ -22,12 +26,12 @@ foreach ($relative in $directories) {
 }
 
 $manifest = Get-Content -LiteralPath (Join-Path $stage 'manifest.json') -Raw | ConvertFrom-Json
-if ($manifest.version -ne '1.5.0') { throw "Unexpected manifest version: $($manifest.version)" }
+if ($manifest.version -ne '1.5.1') { throw "Unexpected manifest version: $($manifest.version)" }
 if ($manifest.oauth2.client_id -ne '996608683771-ab2q6ld3qnh85ckd31fcrgeifbid9pp1.apps.googleusercontent.com') { throw 'Unexpected OAuth client ID' }
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/cloud-backup.js'))) { throw 'cloud-backup.js missing' }
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/crypto-backup.js'))) { throw 'crypto-backup.js missing' }
 
-$forbidden = Get-ChildItem -LiteralPath $stage -Recurse -File | Select-String -Pattern 'mock-google-token|BEGIN (RSA|OPENSSH) PRIVATE KEY|accessToken\s*=' -AllMatches
+$forbidden = Get-ChildItem -LiteralPath $stage -Recurse -File | Select-String -Pattern 'mock-google-token|GOCSPX-|client_secret|clientSecret|BEGIN (RSA|OPENSSH) PRIVATE KEY|accessToken\s*=' -AllMatches
 if ($forbidden) { throw 'Release package contains test credentials or private key material' }
 
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force

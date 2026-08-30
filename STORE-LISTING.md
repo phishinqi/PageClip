@@ -7,7 +7,7 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Release package: release/PageClip-v1.5.0.zip
+- Release package: release/PageClip-v1.5.1.zip
 
 ## Short description
 

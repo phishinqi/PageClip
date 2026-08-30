@@ -6,20 +6,124 @@ export const BACKUP_MIME = 'application/octet-stream';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const CLOUD_SETTINGS = 'cloudBackup';
+// Brave cannot reliably use Chrome's getAuthToken() flow. This public client ID
+// is only used by the chromiumapp.org redirect fallback; never ship a client secret.
+const BRAVE_WEB_CLIENT_ID = '996608683771-lsgfug2pj1oou55naskrj1n48oa27qgi.apps.googleusercontent.com';
+const OAUTH_SCOPES = ['https://www.googleapis.com/auth/drive.appdata'];
+const BRAVE_OAUTH_SCOPES = [...OAUTH_SCOPES, 'openid', 'https://www.googleapis.com/auth/userinfo.email'];
+const GOOGLE_USERINFO_API = 'https://www.googleapis.com/oauth2/v3/userinfo';
 let tokenCache = null;
 
-function identityApi() { if (!chrome.identity?.getAuthToken) throw new Error('当前浏览器不支持 Google OAuth'); return chrome.identity; }
+function identityApi() {
+  if (!chrome.identity) throw new Error('当前浏览器不支持 Google OAuth');
+  return chrome.identity;
+}
+async function isBraveBrowser() {
+  try {
+    const detector = globalThis.navigator?.brave?.isBrave;
+    if (typeof detector === 'function') return Boolean(await detector.call(globalThis.navigator.brave));
+  } catch {}
+  const brands = globalThis.navigator?.userAgentData?.brands;
+  if (Array.isArray(brands) && brands.some((entry) => /brave/i.test(entry?.brand || ''))) return true;
+  // Last-resort compatibility check. Brave may expose a Chrome-compatible UA,
+  // so this is deliberately not the primary detection mechanism.
+  return /\bBrave\//i.test(globalThis.navigator?.userAgent || '');
+}
+function canUseWebAuthFlow(identity) {
+  return typeof identity?.launchWebAuthFlow === 'function' && typeof identity?.getRedirectURL === 'function';
+}
+function isBraveIdentityFlowError(error) {
+  return /invalid_request|custom uri scheme|chrome apps?/i.test(error?.message || String(error));
+}
+function parseOAuthCallback(callbackUrl) {
+  const callback = new URL(callbackUrl);
+  const fragment = new URLSearchParams(callback.hash.startsWith('#') ? callback.hash.slice(1) : callback.hash);
+  const params = callback.searchParams;
+  const error = fragment.get('error') || params.get('error');
+  if (error) {
+    const description = fragment.get('error_description') || params.get('error_description') || error;
+    throw new Error('Google OAuth 授权失败：' + description);
+  }
+  return fragment.get('access_token') || params.get('access_token') || '';
+}
+async function getTokenViaBraveWebFlow(interactive = true) {
+  const identity = identityApi();
+  if (!canUseWebAuthFlow(identity)) throw new Error('Brave Web OAuth API 不可用（需要 launchWebAuthFlow 和 getRedirectURL）');
+  const redirectUri = identity.getRedirectURL();
+  const query = new URLSearchParams({
+    client_id: BRAVE_WEB_CLIENT_ID,
+    response_type: 'token',
+    redirect_uri: redirectUri,
+    scope: BRAVE_OAUTH_SCOPES.join(' '),
+    include_granted_scopes: 'true',
+    prompt: interactive ? 'select_account' : 'none',
+  });
+  const callbackUrl = await identity.launchWebAuthFlow({
+    url: 'https://accounts.google.com/o/oauth2/v2/auth?' + query.toString(),
+    interactive,
+  });
+  if (!callbackUrl) throw new Error('Brave Web OAuth 未返回回调地址');
+  const token = parseOAuthCallback(callbackUrl);
+  if (!token) throw new Error('Brave Web OAuth 回调中没有 access token');
+  return token;
+}
+function authFailureMessage(nativeError, fallbackError, extensionId, brave = false) {
+  const nativeText = nativeError ? (nativeError.message || String(nativeError)) : '未执行 Chrome 原生认证';
+  const fallbackText = fallbackError ? (fallbackError.message || String(fallbackError)) : '未执行 Brave Web OAuth';
+  return (brave ? 'Brave Web OAuth 失败' : 'Google OAuth 失败') + '：Chrome 原生认证：' + nativeText + '；Web OAuth：' + fallbackText + '。请确认 Web OAuth Client 已允许回调地址 https://' + extensionId + '.chromiumapp.org/，且不要把 client secret 放进扩展。';
+}
+async function resolveAccountInfo(token) {
+  const identity = identityApi();
+  try {
+    if (typeof identity.getProfileUserInfo === 'function') {
+      const profile = await identity.getProfileUserInfo({ accountStatus: 'ANY' });
+      if (profile?.email) return { email: profile.email, error: null };
+    }
+  } catch (error) {
+    // Brave may expose the API but return no profile; continue with userinfo.
+  }
+  if (!token) return { email: '', error: 'Google 账号信息不可用：没有 OAuth token' };
+  try {
+    const response = await fetch(GOOGLE_USERINFO_API, { headers: { Authorization: 'Bearer ' + token } });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body?.error_description || body?.error?.message || ('HTTP ' + response.status));
+    if (body?.email) return { email: body.email, error: null };
+    throw new Error('userinfo 响应没有 email');
+  } catch (error) {
+    return { email: '', error: 'Google 账号邮箱读取失败：' + (error?.message || String(error)) };
+  }
+}
 async function getToken(interactive = true) {
   if (tokenCache) return tokenCache;
+  const identity = identityApi();
+  const brave = await isBraveBrowser();
   let result;
-  try { result = await identityApi().getAuthToken({ interactive }); }
-  catch (error) {
-    const message = error?.message || String(error);
-    if (/invalid_request/i.test(message)) {
+  if (brave) {
+    try {
+      result = await getTokenViaBraveWebFlow(interactive);
+    } catch (error) {
       const extensionId = chrome.runtime?.id || '当前扩展 ID';
-      throw new Error('Google OAuth 配置无效（invalid_request）。请在 Google Cloud 创建“Chrome Extension”类型 OAuth Client，并将 Item ID 设置为 ' + extensionId + '；不要使用 Web application / Desktop client。');
+      throw new Error(authFailureMessage(null, error, extensionId, true));
     }
-    throw error;
+  } else if (typeof identity.getAuthToken !== 'function') {
+    try {
+      result = await getTokenViaBraveWebFlow(interactive);
+    } catch (error) {
+      const extensionId = chrome.runtime?.id || '当前扩展 ID';
+      throw new Error(authFailureMessage(null, error, extensionId));
+    }
+  } else {
+    try {
+      result = await identity.getAuthToken({ interactive });
+    } catch (error) {
+      if (!canUseWebAuthFlow(identity)) throw error;
+      try {
+        result = await getTokenViaBraveWebFlow(interactive);
+      } catch (fallbackError) {
+        const extensionId = chrome.runtime?.id || '当前扩展 ID';
+        throw new Error(authFailureMessage(error, fallbackError, extensionId));
+      }
+    }
   }
   const token = typeof result === 'string' ? result : result?.token;
   if (!token) throw new Error('未获取到 Google OAuth Token');
@@ -52,23 +156,20 @@ async function saveCloudSettings(patch) {
 }
 
 export async function connectGoogle() {
-  await getToken(true);
-  let profile = {};
-  try { profile = await identityApi().getProfileUserInfo({ accountStatus: 'ANY' }); } catch {}
-  const email = profile.email || '';
-  await saveCloudSettings({ googleAccountEmail: email || null });
-  return { email: email || null };
+  const token = await getToken(true);
+  const account = await resolveAccountInfo(token);
+  await saveCloudSettings({ googleAccountEmail: account.email || null });
+  return { email: account.email || null, accountError: account.error || null };
 }
 
 export async function getConnectedAccount() {
   const data = await loadData();
   const settings = cloudSettings(data);
-  if (settings.googleAccountEmail) return { email: settings.googleAccountEmail };
+  if (settings.googleAccountEmail) return { email: settings.googleAccountEmail, error: null };
   if (!tokenCache) return null;
-  try {
-    const profile = await identityApi().getProfileUserInfo({ accountStatus: 'ANY' });
-    return profile?.email ? { email: profile.email } : { email: null };
-  } catch { return { email: null }; }
+  const account = await resolveAccountInfo(tokenCache);
+  if (account.email) await saveCloudSettings({ googleAccountEmail: account.email });
+  return { email: account.email || null, error: account.error || null };
 }
 
 export async function signOutGoogle() {
@@ -130,8 +231,18 @@ export async function downloadLatestBackup() {
 
 export async function getCloudBackupStatus() {
   const data = await loadData();
-  const account = cloudSettings(data).googleAccountEmail ? { email: cloudSettings(data).googleAccountEmail } : null;
-  if (!account && !tokenCache) return { connected: false, account: null, file: null };
-  try { return { connected: true, account: account || await getConnectedAccount(), file: tokenCache ? await findLatestBackup(false) : null }; }
-  catch (error) { return { connected: true, account, file: null, error: error.message }; }
+  const storedEmail = cloudSettings(data).googleAccountEmail || '';
+  const storedAccount = storedEmail ? { email: storedEmail, error: null } : null;
+  if (!storedAccount && !tokenCache) return { connected: false, account: null, file: null };
+  try {
+    const account = storedAccount || await getConnectedAccount();
+    return {
+      connected: true,
+      account: account?.email ? { email: account.email } : null,
+      accountError: account?.error || null,
+      file: tokenCache ? await findLatestBackup(false) : null,
+    };
+  } catch (error) {
+    return { connected: true, account: storedAccount, file: null, error: error.message };
+  }
 }

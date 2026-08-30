@@ -807,8 +807,19 @@
       }
     }
   },
+  "settings_connectedNoAccount": {
+    "message": "已连接 Google Drive（账号信息不可用）"
+  },
   "settings_notConnected": {
     "message": "尚未连接 Google 账号"
+  },
+  "settings_cloudFileNeedsConnection": {
+    "message": "云端已有备份 · 修改时间 $TIME$ · 连接账号后可恢复",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
   },
   "settings_cloudFile": {
     "message": "云端已有备份 · 修改时间 $TIME$",

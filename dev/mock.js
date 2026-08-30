@@ -95,6 +95,9 @@
   ];
   const contextMenuListeners = [];
   let readingPermission = true;
+  let mockAuthEnabled = true;
+  let mockDriveNextId = 1;
+  const mockDriveFiles = [];
   const fire = (name, ...args) => listeners[name].forEach((f) => setTimeout(() => f(...args), 0));
 
   function bmWalk(node, fn, parent) {
