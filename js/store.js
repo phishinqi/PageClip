@@ -73,7 +73,7 @@ export function defaultData() {
     quickAccess: [],
     inbox: [],
     recycleBin: [],
-    settings: { onboardingDone: false, sortMode: 'time', railExpanded: true, quickAccessExpanded: true, inboxExpanded: true, uiLocale: 'auto' },
+    settings: { onboardingDone: false, sortMode: 'time', railExpanded: true, folderRailWidth: 180, quickAccessExpanded: true, inboxExpanded: true, uiLocale: 'auto' },
   };
 }
 
@@ -120,6 +120,8 @@ export async function ensureDataInitialized() {
     base.recycleBin = Array.isArray(raw.recycleBin) ? raw.recycleBin.filter((entry) => entry && entry.id && entry.payload) : [];
     Object.assign(base.settings, raw.settings && typeof raw.settings === 'object' ? raw.settings : {});
     if (!['auto', 'zh_CN', 'en'].includes(base.settings.uiLocale)) base.settings.uiLocale = 'auto';
+    const railWidth = Number(base.settings.folderRailWidth);
+    base.settings.folderRailWidth = Number.isFinite(railWidth) ? Math.round(Math.min(360, Math.max(120, railWidth))) : 180;
   }
   base.schema = SCHEMA_VERSION;
   await chrome.storage.local.set({ [STORAGE_KEY]: base });

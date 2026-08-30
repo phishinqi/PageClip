@@ -35,6 +35,7 @@ const collection = createCollectionTab({
   refresh,
   collectCurrent,
   railEl: $('rail'),
+  railResizer: $('rail-resizer'),
   headerEl: $('col-header'),
   scrollEl: $('col-scroll'),
 });
@@ -58,6 +59,72 @@ const inbox = createInboxTab({
   getActiveTab,
   refresh,
 });
+
+// ———— 文件夹栏宽度 ————
+
+function initRailResizer() {
+  const rail = $('rail');
+  const resizer = $('rail-resizer');
+  if (!rail || !resizer) return;
+  const min = 120;
+  const max = 360;
+  let startX = 0;
+  let startWidth = 180;
+  let dragging = false;
+
+  const clamp = (value) => Math.round(Math.min(max, Math.max(min, value)));
+  const applyWidth = (value) => {
+    const width = clamp(value);
+    rail.style.width = `${width}px`;
+    resizer.setAttribute('aria-valuenow', String(width));
+    return width;
+  };
+  const persistWidth = async (width) => {
+    if (!data) return;
+    data.settings.folderRailWidth = width;
+    await updateSettings({ folderRailWidth: width });
+  };
+  resizer.addEventListener('pointerdown', (event) => {
+    if (rail.classList.contains('collapsed')) return;
+    dragging = true;
+    startX = event.clientX;
+    startWidth = rail.getBoundingClientRect().width;
+    resizer.setPointerCapture?.(event.pointerId);
+    document.body.classList.add('rail-resizing');
+    event.preventDefault();
+  });
+  resizer.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    applyWidth(startWidth + event.clientX - startX);
+  });
+  resizer.addEventListener('pointerup', async (event) => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove('rail-resizing');
+    const width = applyWidth(startWidth + event.clientX - startX);
+    await persistWidth(width);
+    resizer.releasePointerCapture?.(event.pointerId);
+  });
+  resizer.addEventListener('pointercancel', () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove('rail-resizing');
+    applyWidth(startWidth);
+  });
+  resizer.addEventListener('keydown', async (event) => {
+    if (rail.classList.contains('collapsed')) return;
+    const current = rail.getBoundingClientRect().width;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      const width = applyWidth(current + (event.key === 'ArrowRight' ? 12 : -12));
+      await persistWidth(width);
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      const width = applyWidth(event.key === 'Home' ? min : max);
+      await persistWidth(width);
+    }
+  });
+}
 
 // ———— 数据流 ————
 
@@ -148,6 +215,8 @@ async function init() {
   $('btnEmbeddedClose').addEventListener('click', () => {
     window.parent.postMessage({ type: 'pageclip:close-overlay' }, '*');
   });
+
+  initRailResizer();
 
   for (const tabBtn of document.querySelectorAll('#tabs .tab')) {
     tabBtn.addEventListener('click', () => {

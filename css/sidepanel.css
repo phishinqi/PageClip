@@ -213,8 +213,31 @@ mark {
   position: relative;
   padding: 6px 4px 12px;
   user-select: none;
+  container-type: inline-size;
+  container-name: folder-rail;
 }
 #rail.collapsed { display: none; }
+#rail-resizer {
+  flex: 0 0 7px;
+  position: relative;
+  cursor: col-resize;
+  background: var(--bg);
+  outline: none;
+}
+#rail-resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 2px;
+  border-radius: 3px;
+  background: transparent;
+  transition: background-color var(--motion) var(--ease-out);
+}
+#rail-resizer:hover::after,
+#rail-resizer:focus-visible::after,
+body.rail-resizing #rail-resizer::after { background: var(--accent); }
+#rail.collapsed + #rail-resizer { display: none; }
+body.rail-resizing { cursor: col-resize; user-select: none; }
+body.rail-resizing * { cursor: col-resize !important; }
 
 .rail-row, .rail-add {
   display: flex;
@@ -1160,3 +1183,10 @@ mark {
 .rail-row:focus-within .row-actions,
 .rail-row.has-actions:hover .row-actions,
 .rail-row.has-actions:focus-within .row-actions { transform: none; }
+
+/* 窄栏优先保证文件夹名称可读；拖宽后恢复完整三按钮操作区。 */
+@container folder-rail (max-width: 205px) {
+  .rail-row .row-actions { width: 22px; gap: 0; padding: 1px; }
+  .rail-row .row-actions .act-btn { display: none; width: 20px; height: 20px; }
+  .rail-row .row-actions .act-btn:nth-child(2) { display: inline-flex; }
+}

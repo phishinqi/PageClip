@@ -44,6 +44,9 @@ export function createCollectionTab(ctx) {
   function renderAll() {
     const data = ctx.getData();
     rail.classList.toggle('collapsed', data.settings.railExpanded === false);
+    const railWidth = Number(data.settings.folderRailWidth) || 180;
+    rail.style.width = `${Math.min(360, Math.max(120, railWidth))}px`;
+    ctx.railResizer?.setAttribute('aria-valuenow', String(Math.round(Math.min(360, Math.max(120, railWidth)))));
     renderRail(data);
     renderList(data);
   }
