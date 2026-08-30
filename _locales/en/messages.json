@@ -8,184 +8,184 @@
   "actionDefaultTitle": {
     "message": "Open PageClip sidebar"
   },
-  "app.name": {
+  "app_name": {
     "message": "PageClip"
   },
-  "app.description": {
+  "app_description": {
     "message": "A local-first Chrome sidebar for collections, quick access, Inbox, bookmarks, and encrypted backups."
   },
-  "nav.collection": {
+  "nav_collection": {
     "message": "Collection"
   },
-  "nav.quick": {
+  "nav_quick": {
     "message": "Quick"
   },
-  "nav.inbox": {
+  "nav_inbox": {
     "message": "Inbox"
   },
-  "nav.bookmarks": {
+  "nav_bookmarks": {
     "message": "Chrome Bookmarks"
   },
-  "nav.searchPlaceholder": {
+  "nav_searchPlaceholder": {
     "message": "Search collections and bookmarks; use #tag to filter"
   },
-  "button.clearShort": {
+  "button_clearShort": {
     "message": "Clear"
   },
-  "button.collectCurrent": {
+  "button_collectCurrent": {
     "message": "Save current page permanently"
   },
-  "button.quickCurrent": {
+  "button_quickCurrent": {
     "message": "Add to Quick Access (Ctrl+Shift+Q)"
   },
-  "button.inboxCurrent": {
+  "button_inboxCurrent": {
     "message": "Add to PageClip Inbox (Ctrl+Shift+R)"
   },
-  "button.settings": {
+  "button_settings": {
     "message": "Settings and backup"
   },
-  "button.closeOverlay": {
+  "button_closeOverlay": {
     "message": "Close web sidebar"
   },
-  "button.clear": {
+  "button_clear": {
     "message": "Clear"
   },
-  "button.open": {
+  "button_open": {
     "message": "Open"
   },
-  "button.edit": {
+  "button_edit": {
     "message": "Edit"
   },
-  "button.delete": {
+  "button_delete": {
     "message": "Delete"
   },
-  "button.restore": {
+  "button_restore": {
     "message": "Restore"
   },
-  "button.permanentDelete": {
+  "button_permanentDelete": {
     "message": "Delete permanently"
   },
-  "button.save": {
+  "button_save": {
     "message": "Save"
   },
-  "button.cancel": {
+  "button_cancel": {
     "message": "Cancel"
   },
-  "button.confirm": {
+  "button_confirm": {
     "message": "Confirm"
   },
-  "button.next": {
+  "button_next": {
     "message": "Next"
   },
-  "button.selectAll": {
+  "button_selectAll": {
     "message": "Select all"
   },
-  "button.clearSelection": {
+  "button_clearSelection": {
     "message": "Clear"
   },
-  "button.invert": {
+  "button_invert": {
     "message": "Invert"
   },
-  "button.completeRemove": {
+  "button_completeRemove": {
     "message": "Complete and remove"
   },
-  "button.currentPage": {
+  "button_currentPage": {
     "message": "Current page"
   },
-  "button.tabGroup": {
+  "button_tabGroup": {
     "message": "Tab collection"
   },
-  "button.readingList": {
+  "button_readingList": {
     "message": "Reading List"
   },
-  "button.pin": {
+  "button_pin": {
     "message": "Pin"
   },
-  "button.unpin": {
+  "button_unpin": {
     "message": "Unpin"
   },
-  "button.openQuick": {
+  "button_openQuick": {
     "message": "Open quick item"
   },
-  "button.restoreGroup": {
+  "button_restoreGroup": {
     "message": "Restore tab collection"
   },
-  "button.editGroup": {
+  "button_editGroup": {
     "message": "Edit tab collection"
   },
-  "button.deleteQuick": {
+  "button_deleteQuick": {
     "message": "Delete quick item"
   },
-  "button.removeFromGroup": {
+  "button_removeFromGroup": {
     "message": "Remove from collection"
   },
-  "menu.quick": {
+  "menu_quick": {
     "message": "Add to PageClip Quick Access"
   },
-  "menu.inbox": {
+  "menu_inbox": {
     "message": "Add to PageClip Inbox"
   },
-  "menu.reading": {
+  "menu_reading": {
     "message": "Sync to Chrome Reading List"
   },
-  "menu.toggle": {
+  "menu_toggle": {
     "message": "Toggle PageClip web sidebar"
   },
-  "inbox.readStatus": {
+  "inbox_readStatus": {
     "message": "Read"
   },
-  "inbox.unreadStatus": {
+  "inbox_unreadStatus": {
     "message": "Unread"
   },
-  "inbox.markRead": {
+  "inbox_markRead": {
     "message": "Mark read"
   },
-  "inbox.markUnread": {
+  "inbox_markUnread": {
     "message": "Mark unread"
   },
-  "feature.quickTitle": {
+  "feature_quickTitle": {
     "message": "Quick Access"
   },
-  "feature.inboxTitle": {
+  "feature_inboxTitle": {
     "message": "Inbox / Read later"
   },
-  "feature.pageclipInbox": {
+  "feature_pageclipInbox": {
     "message": "PageClip Inbox"
   },
-  "feature.readingList": {
+  "feature_readingList": {
     "message": "Chrome Reading List"
   },
-  "empty.quickTitle": {
+  "empty_quickTitle": {
     "message": "No quick items yet"
   },
-  "empty.quickHint": {
+  "empty_quickHint": {
     "message": "Save common pages or the current window here for one-click restore."
   },
-  "empty.group": {
+  "empty_group": {
     "message": "Empty collection · click to edit or delete"
   },
-  "empty.inbox": {
+  "empty_inbox": {
     "message": "No saved items yet"
   },
-  "empty.reading": {
+  "empty_reading": {
     "message": "Chrome Reading List is empty"
   },
-  "empty.noMatch": {
+  "empty_noMatch": {
     "message": "No matching results"
   },
-  "empty.noMatchHint": {
+  "empty_noMatchHint": {
     "message": "Try a shorter keyword; #tag only filters PageClip collections"
   },
-  "dialog.deleteQuickTitle": {
+  "dialog_deleteQuickTitle": {
     "message": "Delete quick item"
   },
-  "dialog.deleteInboxTitle": {
+  "dialog_deleteInboxTitle": {
     "message": "Delete Inbox item"
   },
-  "dialog.deleteReadingTitle": {
+  "dialog_deleteReadingTitle": {
     "message": "Delete Reading List item"
   },
-  "dialog.deleteMessage": {
+  "dialog_deleteMessage": {
     "message": "Delete “$TITLE$”?",
     "placeholders": {
       "title": {
@@ -193,7 +193,7 @@
       }
     }
   },
-  "dialog.deleteGroupMessage": {
+  "dialog_deleteGroupMessage": {
     "message": "Delete “$TITLE$” and its $COUNT$ pages?",
     "placeholders": {
       "title": {
@@ -204,10 +204,10 @@
       }
     }
   },
-  "dialog.batchDeleteInboxTitle": {
+  "dialog_batchDeleteInboxTitle": {
     "message": "Delete Inbox items"
   },
-  "dialog.batchDeleteInboxMessage": {
+  "dialog_batchDeleteInboxMessage": {
     "message": "Move $COUNT$ items to the recycle bin?",
     "placeholders": {
       "count": {
@@ -215,10 +215,10 @@
       }
     }
   },
-  "dialog.batchCompleteInboxTitle": {
+  "dialog_batchCompleteInboxTitle": {
     "message": "Complete Inbox items"
   },
-  "dialog.batchCompleteInboxMessage": {
+  "dialog_batchCompleteInboxMessage": {
     "message": "Complete and move $COUNT$ items to the recycle bin?",
     "placeholders": {
       "count": {
@@ -226,16 +226,16 @@
       }
     }
   },
-  "dialog.editGroup": {
+  "dialog_editGroup": {
     "message": "Edit tab collection"
   },
-  "dialog.groupName": {
+  "dialog_groupName": {
     "message": "Collection name"
   },
-  "dialog.name": {
+  "dialog_name": {
     "message": "Name"
   },
-  "dialog.tabCount": {
+  "dialog_tabCount": {
     "message": "$COUNT$ saveable tabs in the current window (original tabs stay open)",
     "placeholders": {
       "count": {
@@ -243,13 +243,13 @@
       }
     }
   },
-  "dialog.needOneTab": {
+  "dialog_needOneTab": {
     "message": "Select at least one tab"
   },
-  "toast.saved": {
+  "toast_saved": {
     "message": "Saved"
   },
-  "toast.savedNamed": {
+  "toast_savedNamed": {
     "message": "Saved: $TITLE$",
     "placeholders": {
       "title": {
@@ -257,43 +257,43 @@
       }
     }
   },
-  "toast.duplicateSaved": {
+  "toast_duplicateSaved": {
     "message": "Already saved; updated saved time"
   },
-  "toast.quickAdded": {
+  "toast_quickAdded": {
     "message": "Added to Quick Access"
   },
-  "toast.quickUpdated": {
+  "toast_quickUpdated": {
     "message": "Quick item updated"
   },
-  "toast.inboxAdded": {
+  "toast_inboxAdded": {
     "message": "Added to PageClip Inbox"
   },
-  "toast.inboxUpdated": {
+  "toast_inboxUpdated": {
     "message": "Inbox item updated"
   },
-  "toast.readingAdded": {
+  "toast_readingAdded": {
     "message": "Synced to Chrome Reading List"
   },
-  "toast.movedToRecycle": {
+  "toast_movedToRecycle": {
     "message": "Moved to recycle bin · Undo"
   },
-  "toast.groupTabRecycle": {
+  "toast_groupTabRecycle": {
     "message": "Moved to recycle bin · collection kept"
   },
-  "toast.restored": {
+  "toast_restored": {
     "message": "Restored"
   },
-  "toast.groupSaved": {
+  "toast_groupSaved": {
     "message": "Tab collection saved"
   },
-  "toast.groupSavedChanges": {
+  "toast_groupSavedChanges": {
     "message": "Collection saved"
   },
-  "toast.deleted": {
+  "toast_deleted": {
     "message": "Deleted"
   },
-  "toast.batchRecycle": {
+  "toast_batchRecycle": {
     "message": "$COUNT$ items moved to the recycle bin",
     "placeholders": {
       "count": {
@@ -301,7 +301,7 @@
       }
     }
   },
-  "toast.restoredTabs": {
+  "toast_restoredTabs": {
     "message": "Restored $COUNT$ tabs",
     "placeholders": {
       "count": {
@@ -309,46 +309,46 @@
       }
     }
   },
-  "toast.opened": {
+  "toast_opened": {
     "message": "PageClip opened"
   },
-  "toast.operationDone": {
+  "toast_operationDone": {
     "message": "Operation complete"
   },
-  "toast.imported": {
+  "toast_imported": {
     "message": "Import complete"
   },
-  "error.open": {
+  "error_open": {
     "message": "PageClip could not be opened"
   },
-  "error.retry": {
+  "error_retry": {
     "message": "Operation failed; please try again"
   },
-  "error.readPage": {
+  "error_readPage": {
     "message": "Unable to read the current page"
   },
-  "error.systemPage": {
+  "error_systemPage": {
     "message": "System pages cannot be saved"
   },
-  "error.systemAdd": {
+  "error_systemAdd": {
     "message": "System pages cannot be added to PageClip"
   },
-  "error.unsupportedQuick": {
+  "error_unsupportedQuick": {
     "message": "This page cannot be added to Quick Access"
   },
-  "error.unsupportedInbox": {
+  "error_unsupportedInbox": {
     "message": "This address cannot be saved to Inbox"
   },
-  "error.noTabs": {
+  "error_noTabs": {
     "message": "No saveable web tabs in the current window"
   },
-  "error.readingUnsupported": {
+  "error_readingUnsupported": {
     "message": "Chrome Reading List is not supported here"
   },
-  "error.permissionDenied": {
+  "error_permissionDenied": {
     "message": "Reading List permission was not granted"
   },
-  "error.operation": {
+  "error_operation": {
     "message": "Operation failed: $ERROR$",
     "placeholders": {
       "error": {
@@ -356,7 +356,7 @@
       }
     }
   },
-  "error.restore": {
+  "error_restore": {
     "message": "Restore failed: $ERROR$",
     "placeholders": {
       "error": {
@@ -364,7 +364,7 @@
       }
     }
   },
-  "error.sync": {
+  "error_sync": {
     "message": "Sync failed: $ERROR$",
     "placeholders": {
       "error": {
@@ -372,130 +372,130 @@
       }
     }
   },
-  "collection.recent": {
+  "collection_recent": {
     "message": "Recently saved"
   },
-  "collection.time": {
+  "collection_time": {
     "message": "Time"
   },
-  "collection.timeSortTitle": {
+  "collection_timeSortTitle": {
     "message": "Sort by saved time"
   },
-  "collection.title": {
+  "collection_title": {
     "message": "Collection"
   },
-  "collection.all": {
+  "collection_all": {
     "message": "All collections"
   },
-  "collection.uncategorized": {
+  "collection_uncategorized": {
     "message": "Uncategorized"
   },
-  "collection.addFolder": {
+  "collection_addFolder": {
     "message": "New folder"
   },
-  "collection.renameFolder": {
+  "collection_renameFolder": {
     "message": "Rename folder"
   },
-  "collection.deleteFolder": {
+  "collection_deleteFolder": {
     "message": "Delete folder"
   },
-  "collection.sortTime": {
+  "collection_sortTime": {
     "message": "By time"
   },
-  "collection.sortCustom": {
+  "collection_sortCustom": {
     "message": "Custom"
   },
-  "collection.tags": {
+  "collection_tags": {
     "message": "Tags"
   },
-  "collection.note": {
+  "collection_note": {
     "message": "Note"
   },
-  "collection.url": {
+  "collection_url": {
     "message": "URL"
   },
-  "collection.folder": {
+  "collection_folder": {
     "message": "Folder"
   },
-  "collection.empty": {
+  "collection_empty": {
     "message": "No collections yet"
   },
-  "collection.emptyHint": {
+  "collection_emptyHint": {
     "message": "Press Ctrl+Shift+S or click ＋ to save the current page"
   },
-  "collection.noMatch": {
+  "collection_noMatch": {
     "message": "No collections match the filters"
   },
-  "collection.clearTagFilter": {
+  "collection_clearTagFilter": {
     "message": "Clear tag filter"
   },
-  "collection.folderEmpty": {
+  "collection_folderEmpty": {
     "message": "This folder has no collections"
   },
-  "collection.folderEmptyHint": {
+  "collection_folderEmptyHint": {
     "message": "Drag collection items to a folder on the left to move them"
   },
-  "collection.collectCurrent": {
+  "collection_collectCurrent": {
     "message": "Save current page"
   },
-  "collection.topFolder": {
+  "collection_topFolder": {
     "message": "New top-level folder"
   },
-  "collection.newSubfolder": {
+  "collection_newSubfolder": {
     "message": "New subfolder"
   },
-  "collection.rename": {
+  "collection_rename": {
     "message": "Rename"
   },
-  "collection.openFolder": {
+  "collection_openFolder": {
     "message": "Open folder collection"
   },
-  "collection.moveTo": {
+  "collection_moveTo": {
     "message": "Move to…"
   },
-  "collection.openNewTab": {
+  "collection_openNewTab": {
     "message": "Open in a new tab"
   },
-  "collection.delete": {
+  "collection_delete": {
     "message": "Delete collection"
   },
-  "collection.edit": {
+  "collection_edit": {
     "message": "Edit collection"
   },
-  "collection.reasonPlaceholder": {
+  "collection_reasonPlaceholder": {
     "message": "Why did you save this? Key details…"
   },
-  "collection.tagsPlaceholder": {
+  "collection_tagsPlaceholder": {
     "message": "Enter a tag and press Enter"
   },
-  "collection.remove": {
+  "collection_remove": {
     "message": "Remove"
   },
-  "collection.nameRequired": {
+  "collection_nameRequired": {
     "message": "Name is required"
   },
-  "collection.createdFolder": {
+  "collection_createdFolder": {
     "message": "Folder created"
   },
-  "collection.saved": {
+  "collection_saved": {
     "message": "Saved"
   },
-  "collection.deleted": {
+  "collection_deleted": {
     "message": "Deleted"
   },
-  "collection.movedTop": {
+  "collection_movedTop": {
     "message": "Moved to top level"
   },
-  "collection.customSort": {
+  "collection_customSort": {
     "message": "Custom ordering enabled"
   },
-  "collection.cannotDeleteUncategorized": {
+  "collection_cannotDeleteUncategorized": {
     "message": "Uncategorized cannot be deleted"
   },
-  "collection.cannotMoveUncategorized": {
+  "collection_cannotMoveUncategorized": {
     "message": "Cannot move into Uncategorized"
   },
-  "collection.deleteFolderMessage": {
+  "collection_deleteFolderMessage": {
     "message": "Delete folder “$TITLE$”? $COUNT$ collections will move to Uncategorized and subfolders will also be deleted.",
     "placeholders": {
       "title": {
@@ -506,7 +506,7 @@
       }
     }
   },
-  "collection.deleteMessage": {
+  "collection_deleteMessage": {
     "message": "Delete “$TITLE$”? (Chrome bookmarks are not affected)",
     "placeholders": {
       "title": {
@@ -514,7 +514,7 @@
       }
     }
   },
-  "collection.moveTitle": {
+  "collection_moveTitle": {
     "message": "Move “$TITLE$” to…",
     "placeholders": {
       "title": {
@@ -522,7 +522,7 @@
       }
     }
   },
-  "collection.movedTo": {
+  "collection_movedTo": {
     "message": "Moved to “$TITLE$”",
     "placeholders": {
       "title": {
@@ -530,97 +530,97 @@
       }
     }
   },
-  "bookmarks.add": {
+  "bookmarks_add": {
     "message": "Bookmark"
   },
-  "bookmarks.addFolder": {
+  "bookmarks_addFolder": {
     "message": "Folder"
   },
-  "bookmarks.quickAdd": {
+  "bookmarks_quickAdd": {
     "message": "Add the current tab to the bookmarks bar"
   },
-  "bookmarks.saveCurrent": {
+  "bookmarks_saveCurrent": {
     "message": "Save current page"
   },
-  "bookmarks.unnamed": {
+  "bookmarks_unnamed": {
     "message": "Unnamed"
   },
-  "bookmarks.newHere": {
+  "bookmarks_newHere": {
     "message": "New bookmark here"
   },
-  "bookmarks.rename": {
+  "bookmarks_rename": {
     "message": "Rename"
   },
-  "bookmarks.edit": {
+  "bookmarks_edit": {
     "message": "Edit"
   },
-  "bookmarks.move": {
+  "bookmarks_move": {
     "message": "Move to folder"
   },
-  "bookmarks.delete": {
+  "bookmarks_delete": {
     "message": "Delete"
   },
-  "bookmarks.new": {
+  "bookmarks_new": {
     "message": "New bookmark"
   },
-  "bookmarks.newChildFolder": {
+  "bookmarks_newChildFolder": {
     "message": "New subfolder"
   },
-  "bookmarks.openNew": {
+  "bookmarks_openNew": {
     "message": "Open in a new tab"
   },
-  "bookmarks.create": {
+  "bookmarks_create": {
     "message": "New bookmark"
   },
-  "bookmarks.createFolder": {
+  "bookmarks_createFolder": {
     "message": "New folder"
   },
-  "bookmarks.editTitle": {
+  "bookmarks_editTitle": {
     "message": "Edit bookmark"
   },
-  "bookmarks.renameTitle": {
+  "bookmarks_renameTitle": {
     "message": "Rename folder"
   },
-  "bookmarks.name": {
+  "bookmarks_name": {
     "message": "Name"
   },
-  "bookmarks.bookmarkName": {
+  "bookmarks_bookmarkName": {
     "message": "Bookmark name"
   },
-  "bookmarks.folderName": {
+  "bookmarks_folderName": {
     "message": "Folder name"
   },
-  "bookmarks.url": {
+  "bookmarks_url": {
     "message": "URL"
   },
-  "bookmarks.urlPlaceholder": {
+  "bookmarks_urlPlaceholder": {
     "message": "https://…"
   },
-  "bookmarks.urlRequired": {
+  "bookmarks_urlRequired": {
     "message": "URL is required"
   },
-  "bookmarks.nameRequired": {
+  "bookmarks_nameRequired": {
     "message": "Name is required"
   },
-  "bookmarks.created": {
+  "bookmarks_created": {
     "message": "Bookmark created"
   },
-  "bookmarks.folderCreated": {
+  "bookmarks_folderCreated": {
     "message": "Folder created"
   },
-  "bookmarks.saved": {
+  "bookmarks_saved": {
     "message": "Saved"
   },
-  "bookmarks.deleted": {
+  "bookmarks_deleted": {
     "message": "Deleted"
   },
-  "bookmarks.deleteBookmark": {
+  "bookmarks_deleteBookmark": {
     "message": "Delete bookmark"
   },
-  "bookmarks.deleteFolder": {
+  "bookmarks_deleteFolder": {
     "message": "Delete folder"
   },
-  "bookmarks.deleteBookmarkConfirm": {
+  "bookmarks_deleteBookmarkConfirm": {
     "message": "Delete bookmark “$TITLE$”?",
     "placeholders": {
       "title": {
@@ -628,7 +628,7 @@
       }
     }
   },
-  "bookmarks.deleteFolderConfirm": {
+  "bookmarks_deleteFolderConfirm": {
     "message": "Delete folder “$TITLE$” and its $COUNT$ bookmarks?",
     "placeholders": {
       "title": {
@@ -639,7 +639,7 @@
       }
     }
   },
-  "bookmarks.moved": {
+  "bookmarks_moved": {
     "message": "Moved to “$TITLE$”",
     "placeholders": {
       "title": {
@@ -647,7 +647,7 @@
       }
     }
   },
-  "bookmarks.moveTitle": {
+  "bookmarks_moveTitle": {
     "message": "Move “$TITLE$” to…",
     "placeholders": {
       "title": {
@@ -655,151 +655,151 @@
       }
     }
   },
-  "bookmarks.topLevel": {
+  "bookmarks_topLevel": {
     "message": "(Top level)"
   },
-  "bookmarks.cannotMoveChild": {
+  "bookmarks_cannotMoveChild": {
     "message": "Cannot move a folder into its own subfolder"
   },
-  "bookmarks.addedToBar": {
+  "bookmarks_addedToBar": {
     "message": "Added to bookmarks bar"
   },
-  "settings.title": {
+  "settings_title": {
     "message": "PageClip Settings"
   },
-  "settings.subtitle": {
+  "settings_subtitle": {
     "message": "Settings and data"
   },
-  "settings.eyebrow": {
+  "settings_eyebrow": {
     "message": "SETTINGS & DATA"
   },
-  "settings.hero": {
+  "settings_hero": {
     "message": "Turn your saved pages into a workflow"
   },
-  "settings.heroHint": {
+  "settings_heroHint": {
     "message": "Backups, imports, encrypted cloud backup, and the recycle bin live here. Local data stays in this browser by default; cloud backup is always manual."
   },
-  "settings.stats": {
+  "settings_stats": {
     "message": "Data statistics"
   },
-  "settings.statsHint": {
+  "settings_statsHint": {
     "message": "PageClip data is stored locally in chrome.storage.local."
   },
-  "settings.permanent": {
+  "settings_permanent": {
     "message": "Permanent"
   },
-  "settings.quickSingles": {
+  "settings_quickSingles": {
     "message": "Quick pages"
   },
-  "settings.quickGroups": {
+  "settings_quickGroups": {
     "message": "Quick collections"
   },
-  "settings.unread": {
+  "settings_unread": {
     "message": "Inbox unread"
   },
-  "settings.read": {
+  "settings_read": {
     "message": "Inbox read"
   },
-  "settings.folders": {
+  "settings_folders": {
     "message": "Folders"
   },
-  "settings.tags": {
+  "settings_tags": {
     "message": "Tags"
   },
-  "settings.recycleEntries": {
+  "settings_recycleEntries": {
     "message": "Recycle entries"
   },
-  "settings.backup": {
+  "settings_backup": {
     "message": "Backup and restore"
   },
-  "settings.backupHint": {
+  "settings_backupHint": {
     "message": "JSON keeps collections, folders, Quick Access, and Inbox; import supports merge or replace."
   },
-  "settings.exportJson": {
+  "settings_exportJson": {
     "message": "Export JSON backup"
   },
-  "settings.importJson": {
+  "settings_importJson": {
     "message": "Import JSON backup"
   },
-  "settings.importBookmarks": {
+  "settings_importBookmarks": {
     "message": "Import browser bookmarks"
   },
-  "settings.bookmarksHint": {
+  "settings_bookmarksHint": {
     "message": "Copy into PageClip only; Chrome native bookmarks are not modified."
   },
-  "settings.readBookmarks": {
+  "settings_readBookmarks": {
     "message": "Read current browser bookmarks"
   },
-  "settings.chooseBookmarks": {
+  "settings_chooseBookmarks": {
     "message": "Choose bookmarks.html"
   },
-  "settings.htmlCsv": {
+  "settings_htmlCsv": {
     "message": "HTML / CSV import and export"
   },
-  "settings.importCollection": {
+  "settings_importCollection": {
     "message": "Import collection HTML/CSV"
   },
-  "settings.importQuick": {
+  "settings_importQuick": {
     "message": "Import Quick HTML/CSV"
   },
-  "settings.importInbox": {
+  "settings_importInbox": {
     "message": "Import Inbox HTML/CSV"
   },
-  "settings.exportCollectionHtml": {
+  "settings_exportCollectionHtml": {
     "message": "Export collection HTML"
   },
-  "settings.exportCollectionCsv": {
+  "settings_exportCollectionCsv": {
     "message": "Export collection CSV"
   },
-  "settings.exportQuickHtml": {
+  "settings_exportQuickHtml": {
     "message": "Export Quick HTML"
   },
-  "settings.exportQuickCsv": {
+  "settings_exportQuickCsv": {
     "message": "Export Quick CSV"
   },
-  "settings.exportInboxHtml": {
+  "settings_exportInboxHtml": {
     "message": "Export Inbox HTML"
   },
-  "settings.exportInboxCsv": {
+  "settings_exportInboxCsv": {
     "message": "Export Inbox CSV"
   },
-  "settings.exportChromeHtml": {
+  "settings_exportChromeHtml": {
     "message": "Export Chrome bookmarks HTML"
   },
-  "settings.exportChromeCsv": {
+  "settings_exportChromeCsv": {
     "message": "Export Chrome bookmarks CSV"
   },
-  "settings.htmlCsvHint": {
+  "settings_htmlCsvHint": {
     "message": "Import or export PageClip collections, Quick Access, and Inbox; bookmarks.html is the browser-bookmark importer."
   },
-  "settings.recycle": {
+  "settings_recycle": {
     "message": "Recycle bin"
   },
-  "settings.recycleHint": {
+  "settings_recycleHint": {
     "message": "Deletes and completed Inbox items are kept for 30 days."
   },
-  "settings.shortcuts": {
+  "settings_shortcuts": {
     "message": "Shortcuts and storage"
   },
-  "settings.shortcutsText": {
+  "settings_shortcutsText": {
     "message": "Ctrl+Shift+S: Permanent collection   Ctrl+Shift+Q: Quick Access   Ctrl+Shift+R: Inbox   Ctrl+Shift+P: Web sidebar"
   },
-  "settings.shortcutsHint": {
+  "settings_shortcutsHint": {
     "message": "Change keyboard shortcuts in Chrome extension shortcuts."
   },
-  "settings.openShortcuts": {
+  "settings_openShortcuts": {
     "message": "Open shortcut settings"
   },
-  "settings.localNote": {
+  "settings_localNote": {
     "message": "Data stays on this device unless you manually start an encrypted cloud backup."
   },
-  "settings.cloud": {
+  "settings_cloud": {
     "message": "Google Drive cloud backup"
   },
-  "settings.cloudHint": {
+  "settings_cloudHint": {
     "message": "Sign in with Google OAuth; backups are uploaded to the Drive app data folder as ciphertext."
   },
-  "settings.connected": {
+  "settings_connected": {
     "message": "Connected: $EMAIL$",
     "placeholders": {
       "email": {
@@ -807,10 +807,10 @@
       }
     }
   },
-  "settings.notConnected": {
+  "settings_notConnected": {
     "message": "No Google account connected"
   },
-  "settings.cloudFile": {
+  "settings_cloudFile": {
     "message": "Cloud backup exists · modified $TIME$",
     "placeholders": {
       "time": {
@@ -818,7 +818,7 @@
       }
     }
   },
-  "settings.localLast": {
+  "settings_localLast": {
     "message": "Last backup recorded locally: $TIME$",
     "placeholders": {
       "time": {
@@ -826,73 +826,73 @@
       }
     }
   },
-  "settings.noCloud": {
+  "settings_noCloud": {
     "message": "No backup uploaded yet"
   },
-  "settings.connect": {
+  "settings_connect": {
     "message": "Connect Google Drive"
   },
-  "settings.manualBackup": {
+  "settings_manualBackup": {
     "message": "Manual backup"
   },
-  "settings.manualRestore": {
+  "settings_manualRestore": {
     "message": "Manual restore"
   },
-  "settings.exportRecovery": {
+  "settings_exportRecovery": {
     "message": "Export device recovery key"
   },
-  "settings.importRecovery": {
+  "settings_importRecovery": {
     "message": "Import device recovery key"
   },
-  "settings.signOut": {
+  "settings_signOut": {
     "message": "Sign out and switch account"
   },
-  "settings.cloudNote": {
+  "settings_cloudNote": {
     "message": "Choose password or device-key encryption for each backup. Device-key restore across devices requires an encrypted recovery-key file."
   },
-  "settings.language": {
+  "settings_language": {
     "message": "Language"
   },
-  "settings.languageHint": {
+  "settings_languageHint": {
     "message": "Follow Chrome automatically, or choose a fixed language for PageClip."
   },
-  "settings.localeAuto": {
+  "settings_localeAuto": {
     "message": "Automatic"
   },
-  "settings.localeZh": {
+  "settings_localeZh": {
     "message": "中文"
   },
-  "settings.localeEn": {
+  "settings_localeEn": {
     "message": "English"
   },
-  "backup.passwordMode": {
+  "backup_passwordMode": {
     "message": "Backup password encryption"
   },
-  "backup.deviceMode": {
+  "backup_deviceMode": {
     "message": "Chrome device-key encryption"
   },
-  "backup.passwordHint": {
+  "backup_passwordHint": {
     "message": "Enter the password for each backup; only a local verifier is stored."
   },
-  "backup.deviceHint": {
+  "backup_deviceHint": {
     "message": "Restores directly in this browser; import an encrypted recovery key on another device."
   },
-  "backup.passwordPlaceholder": {
+  "backup_passwordPlaceholder": {
     "message": "At least 8 characters"
   },
-  "backup.passwordConfirm": {
+  "backup_passwordConfirm": {
     "message": "Confirm"
   },
-  "backup.passwordWarning": {
+  "backup_passwordWarning": {
     "message": "PageClip does not store passwords. Without the password or a recovery key, the backup cannot be decrypted."
   },
-  "backup.overwrite": {
+  "backup_overwrite": {
     "message": "A PageClip-latest.enc file exists. Overwrite it with current local data?"
   },
-  "backup.restoreReplace": {
+  "backup_restoreReplace": {
     "message": "Replace will overwrite local PageClip data. Continue?"
   },
-  "backup.success": {
+  "backup_success": {
     "message": "Backup succeeded: $SIZE$ KB",
     "placeholders": {
       "size": {
@@ -900,43 +900,43 @@
       }
     }
   },
-  "backup.cloudFailed": {
+  "backup_cloudFailed": {
     "message": "Cloud backup failed"
   },
-  "backup.restoreFailed": {
+  "backup_restoreFailed": {
     "message": "Cloud restore failed"
   },
-  "backup.diffTitle": {
+  "backup_diffTitle": {
     "message": "Restore difference preview"
   },
-  "backup.merge": {
+  "backup_merge": {
     "message": "Merge"
   },
-  "backup.replace": {
+  "backup_replace": {
     "message": "Replace"
   },
-  "backup.recoveryExported": {
+  "backup_recoveryExported": {
     "message": "Encrypted recovery key exported"
   },
-  "backup.recoveryImported": {
+  "backup_recoveryImported": {
     "message": "Device recovery key imported"
   },
-  "backup.logoutConfirm": {
+  "backup_logoutConfirm": {
     "message": "Sign out of Google? Cloud and local PageClip data will not be deleted."
   },
-  "backup.added": {
+  "backup_added": {
     "message": "Added"
   },
-  "backup.same": {
+  "backup_same": {
     "message": "Same"
   },
-  "backup.conflicts": {
+  "backup_conflicts": {
     "message": "Conflicts"
   },
-  "backup.localOnly": {
+  "backup_localOnly": {
     "message": "Local only"
   },
-  "recycle.batch": {
+  "recycle_batch": {
     "message": "Batches $COUNT$ · Entries $ENTRIES$",
     "placeholders": {
       "count": {
@@ -947,25 +947,25 @@
       }
     }
   },
-  "recycle.empty": {
+  "recycle_empty": {
     "message": "Recycle bin is empty"
   },
-  "recycle.selectAll": {
+  "recycle_selectAll": {
     "message": "Select all"
   },
-  "recycle.clearSelection": {
+  "recycle_clearSelection": {
     "message": "Clear selection"
   },
-  "recycle.restoreSelected": {
+  "recycle_restoreSelected": {
     "message": "Restore selected"
   },
-  "recycle.deleteSelected": {
+  "recycle_deleteSelected": {
     "message": "Delete selected permanently"
   },
-  "recycle.clear": {
+  "recycle_clear": {
     "message": "Clear recycle bin"
   },
-  "recycle.clearConfirm": {
+  "recycle_clearConfirm": {
     "message": "Permanently clear the recycle bin?"
   },
   "shortcutCollectDescription": {
@@ -980,31 +980,31 @@
   "shortcutOverlayDescription": {
     "message": "Toggle the PageClip web sidebar"
   },
-  "onboarding.title": {
+  "onboarding_title": {
     "message": "Welcome to PageClip"
   },
-  "onboarding.collectTitle": {
+  "onboarding_collectTitle": {
     "message": "Save the current page"
   },
-  "onboarding.collectDesc": {
+  "onboarding_collectDesc": {
     "message": "Click ＋ or press Ctrl+Shift+S to save silently, then add tags and notes in the list."
   },
-  "onboarding.systemTitle": {
+  "onboarding_systemTitle": {
     "message": "Two clear systems"
   },
-  "onboarding.systemDesc": {
+  "onboarding_systemDesc": {
     "message": "Collection is your private library; Chrome Bookmarks manages browser bookmarks directly."
   },
-  "onboarding.searchTitle": {
+  "onboarding_searchTitle": {
     "message": "Search and drag"
   },
-  "onboarding.searchDesc": {
+  "onboarding_searchDesc": {
     "message": "Search both systems from the top bar; use #tag to filter collections. Items and folders support drag and drop."
   },
-  "onboarding.start": {
+  "onboarding_start": {
     "message": "Get started"
   },
-  "search.total": {
+  "search_total": {
     "message": "$COUNT$ results",
     "placeholders": {
       "count": {
@@ -1012,7 +1012,7 @@
       }
     }
   },
-  "search.tagPrefix": {
+  "search_tagPrefix": {
     "message": "　Tag filter: $TAGS$",
     "placeholders": {
       "tags": {
@@ -1020,7 +1020,7 @@
       }
     }
   },
-  "search.collectionGroup": {
+  "search_collectionGroup": {
     "message": "PageClip collection ($COUNT$)",
     "placeholders": {
       "count": {
@@ -1028,7 +1028,7 @@
       }
     }
   },
-  "search.bookmarkGroup": {
+  "search_bookmarkGroup": {
     "message": "Chrome bookmarks ($COUNT$)",
     "placeholders": {
       "count": {
@@ -1036,43 +1036,43 @@
       }
     }
   },
-  "content.openSettings": {
+  "content_openSettings": {
     "message": "Open PageClip settings"
   },
-  "content.openManager": {
+  "content_openManager": {
     "message": "Open PageClip"
   },
-  "content.openManagerTab": {
+  "content_openManagerTab": {
     "message": "Open PageClip in a new tab"
   },
-  "content.capture": {
+  "content_capture": {
     "message": "Save current page"
   },
-  "content.quick": {
+  "content_quick": {
     "message": "Add to PageClip Quick Access"
   },
-  "content.inbox": {
+  "content_inbox": {
     "message": "Add to PageClip Inbox"
   },
-  "content.reading": {
+  "content_reading": {
     "message": "Sync to Chrome Reading List"
   },
-  "content.toggle": {
+  "content_toggle": {
     "message": "Open web sidebar"
   },
-  "content.close": {
+  "content_close": {
     "message": "Close web sidebar"
   },
-  "content.copy": {
+  "content_copy": {
     "message": "Copy page URL"
   },
-  "content.copied": {
+  "content_copied": {
     "message": "Page URL copied"
   },
-  "content.toggleTitle": {
+  "content_toggleTitle": {
     "message": "Open the PageClip web sidebar (Ctrl+Shift+P)"
   },
-  "content.iframeTitle": {
+  "content_iframeTitle": {
     "message": "PageClip web sidebar"
   }
 }
