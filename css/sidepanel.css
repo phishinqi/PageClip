@@ -1147,3 +1147,16 @@ mark {
 .feature-card:hover .card-actions,
 .feature-card:focus-within .card-actions { opacity: 1; pointer-events: auto; transform: translate(0, 0); }
 .feature-card .card-actions { z-index: 2; }
+
+/* 文件夹行的操作区参与 flex 排版，给标题/数量预留真实空间，避免窄侧栏重叠。 */
+.rail-row .row-actions {
+  position: static;
+  flex: none;
+  margin-left: auto;
+  transform: none;
+}
+.rail-row .row-actions:empty { display: none; }
+.rail-row:hover .row-actions,
+.rail-row:focus-within .row-actions,
+.rail-row.has-actions:hover .row-actions,
+.rail-row.has-actions:focus-within .row-actions { transform: none; }
