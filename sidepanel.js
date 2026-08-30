@@ -71,6 +71,10 @@ function initRailResizer() {
   let startX = 0;
   let startWidth = 180;
   let dragging = false;
+  let lastX = 0;
+  let pendingWidth = null;
+  let frame = 0;
+  let pointerId = null;
 
   const clamp = (value) => Math.round(Math.min(max, Math.max(min, value)));
   const applyWidth = (value) => {
@@ -78,6 +82,30 @@ function initRailResizer() {
     rail.style.width = `${width}px`;
     resizer.setAttribute('aria-valuenow', String(width));
     return width;
+  };
+  const flushWidth = () => {
+    frame = 0;
+    if (pendingWidth == null) return;
+    applyWidth(pendingWidth);
+    pendingWidth = null;
+  };
+  const queueWidth = (clientX) => {
+    lastX = clientX;
+    pendingWidth = startWidth + clientX - startX;
+    if (!frame) frame = requestAnimationFrame(flushWidth);
+  };
+  const finishDrag = async ({ cancel = false, clientX = lastX, event } = {}) => {
+    if (!dragging) return;
+    dragging = false;
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    pendingWidth = null;
+    document.body.classList.remove('rail-resizing');
+    const width = cancel ? applyWidth(startWidth) : applyWidth(startWidth + clientX - startX);
+    if (pointerId != null && resizer.hasPointerCapture?.(pointerId)) resizer.releasePointerCapture(pointerId);
+    pointerId = null;
+    if (!cancel) await persistWidth(width);
+    event?.preventDefault?.();
   };
   const persistWidth = async (width) => {
     if (!data) return;
@@ -88,28 +116,25 @@ function initRailResizer() {
     if (rail.classList.contains('collapsed')) return;
     dragging = true;
     startX = event.clientX;
+    lastX = event.clientX;
     startWidth = rail.getBoundingClientRect().width;
+    pointerId = event.pointerId;
     resizer.setPointerCapture?.(event.pointerId);
     document.body.classList.add('rail-resizing');
     event.preventDefault();
   });
   resizer.addEventListener('pointermove', (event) => {
     if (!dragging) return;
-    applyWidth(startWidth + event.clientX - startX);
+    queueWidth(event.clientX);
   });
   resizer.addEventListener('pointerup', async (event) => {
-    if (!dragging) return;
-    dragging = false;
-    document.body.classList.remove('rail-resizing');
-    const width = applyWidth(startWidth + event.clientX - startX);
-    await persistWidth(width);
-    resizer.releasePointerCapture?.(event.pointerId);
+    await finishDrag({ clientX: event.clientX, event });
   });
   resizer.addEventListener('pointercancel', () => {
-    if (!dragging) return;
-    dragging = false;
-    document.body.classList.remove('rail-resizing');
-    applyWidth(startWidth);
+    finishDrag({ cancel: true });
+  });
+  resizer.addEventListener('lostpointercapture', () => {
+    if (dragging) finishDrag({ clientX: lastX });
   });
   resizer.addEventListener('keydown', async (event) => {
     if (rail.classList.contains('collapsed')) return;

@@ -29,6 +29,7 @@ import {
 } from './store.js';
 import { createDnd } from './tree.js';
 import { t } from './i18n.js';
+import { buildFolderStats, folderScope } from './collection-model.js';
 
 export function createCollectionTab(ctx) {
   const { state } = ctx;
@@ -38,17 +39,30 @@ export function createCollectionTab(ctx) {
   const selectedItems = new Set();
   let selectionMode = false;
   let selectionAnchor = null;
+  const virtualList = {
+    entries: [],
+    heights: [],
+    offsets: [],
+    layer: null,
+    resizeObserver: null,
+    renderFrame: 0,
+    renderToken: 0,
+    start: 0,
+  };
+
+  scroll.addEventListener('scroll', scheduleVirtualRender, { passive: true });
 
   // ———— 渲染入口 ————
 
   function renderAll() {
     const data = ctx.getData();
+    const folderStats = buildFolderStats(data);
     rail.classList.toggle('collapsed', data.settings.railExpanded === false);
     const railWidth = Number(data.settings.folderRailWidth) || 180;
     rail.style.width = `${Math.min(360, Math.max(120, railWidth))}px`;
     ctx.railResizer?.setAttribute('aria-valuenow', String(Math.round(Math.min(360, Math.max(120, railWidth)))));
-    renderRail(data);
-    renderList(data);
+    renderRail(data, folderStats);
+    renderList(data, folderStats);
   }
 
   function nameOf(folderId, data) {
@@ -58,7 +72,7 @@ export function createCollectionTab(ctx) {
 
   // ———— 左侧文件夹栏 ————
 
-  function renderRail(data) {
+  function renderRail(data, folderStats) {
     rail.replaceChildren();
     rail.append(
       railRow({
@@ -77,7 +91,7 @@ export function createCollectionTab(ctx) {
         id: UNCATEGORIZED_ID,
         kind: 'col-folder',
         name: nameOf(UNCATEGORIZED_ID, data),
-        count: data.items.filter((it) => it.folderId === UNCATEGORIZED_ID).length,
+        count: folderStats.counts.get(UNCATEGORIZED_ID) || 0,
         active: state.folderId === UNCATEGORIZED_ID,
         system: true,
         ico: icon('inbox', 15),
@@ -86,7 +100,7 @@ export function createCollectionTab(ctx) {
     const roots = data.folders
       .filter((f) => !f.system && f.parentId === null)
       .sort((a, b) => a.order - b.order);
-    for (const f of roots) appendFolderRows(rail, data, f, 0);
+    for (const f of roots) appendFolderRows(rail, data, folderStats, f, 0);
     rail.append(
       h(
         'button',
@@ -97,15 +111,15 @@ export function createCollectionTab(ctx) {
     );
   }
 
-  function appendFolderRows(container, data, folder, depth) {
-    const children = data.folders.filter((f) => f.parentId === folder.id);
+  function appendFolderRows(container, data, folderStats, folder, depth) {
+    const children = folderStats.childrenByParent.get(folder.id) || [];
     const isExpanded = state.colExpanded.has(folder.id);
     const row = railRow({
       data,
       id: folder.id,
       kind: 'col-folder',
       name: folder.name,
-      count: data.items.filter((it) => it.folderId === folder.id).length,
+      count: folderStats.counts.get(folder.id) || 0,
       active: state.folderId === folder.id,
       depth,
       hasChildren: children.length > 0,
@@ -120,7 +134,7 @@ export function createCollectionTab(ctx) {
         dataset: { parentFolder: folder.id },
       });
       for (const c of children.sort((a, b) => a.order - b.order)) {
-        appendFolderRows(childWrap, data, c, depth + 1);
+        appendFolderRows(childWrap, data, folderStats, c, depth + 1);
       }
       container.append(childWrap);
     }
@@ -209,17 +223,13 @@ export function createCollectionTab(ctx) {
 
   // ———— 右侧列表 ————
 
-  function renderList(data) {
-    renderHeader(data);
-    const tagMap = collectTags(data);
-    renderTagChips(tagMap);
-    scroll.replaceChildren();
-
+  function renderList(data, folderStats) {
+    const scope = folderScope(state.folderId, folderStats);
     const visibleIds = new Set(data.items.map((it) => it.id));
     for (const id of [...selectedItems]) if (!visibleIds.has(id)) selectedItems.delete(id);
-    const inFolder = (it) => state.folderId === 'all' || it.folderId === state.folderId;
+    const inFolder = (it) => !scope || scope.has(it.folderId);
     const tagOk = (it) =>
-      [...state.tagFilter].every((t) => (it.tags || []).some((x) => x.toLowerCase() === t.toLowerCase()));
+      [...state.tagFilter].every((tag) => (it.tags || []).some((x) => x.toLowerCase() === tag.toLowerCase()));
     const match = data.items.filter((it) => inFolder(it) && tagOk(it));
     const custom = data.settings.sortMode === 'custom';
     const sorted = [...match].sort(
@@ -228,26 +238,142 @@ export function createCollectionTab(ctx) {
     const pinned = sorted.filter((it) => it.pinned);
     const rest = sorted.filter((it) => !it.pinned);
 
+    renderHeader(data, match.length);
+    renderTagChips(collectTags(data));
+    disposeVirtualList();
+    scroll.replaceChildren();
+
     if (!match.length) {
       scroll.append(emptyState(data));
       return;
     }
+
+    const entries = [];
     if (pinned.length) {
-      scroll.append(sectionLabel(icon('pin', 13), t('button.pin')));
-      pinned.forEach((it) => scroll.append(card(it, data, sorted)));
+      entries.push({ type: 'section', label: t('button.pin'), icon: 'pin' });
+      pinned.forEach((item) => entries.push({ type: 'item', item }));
     }
     if (rest.length) {
-      if (pinned.length && !custom) scroll.append(sectionLabel(icon('clock', 13), t('collection.recent')));
-      rest.forEach((it) => scroll.append(card(it, data, sorted)));
+      if (pinned.length && !custom) entries.push({ type: 'section', label: t('collection.recent'), icon: 'clock' });
+      rest.forEach((item) => entries.push({ type: 'item', item }));
+    }
+    mountVirtualList(entries, data, sorted);
+  }
+
+  const ITEM_HEIGHT_ESTIMATE = 96;
+  const SECTION_HEIGHT_ESTIMATE = 28;
+  const VIRTUAL_OVERSCAN = 720;
+
+  function disposeVirtualList() {
+    if (virtualList.renderFrame) cancelAnimationFrame(virtualList.renderFrame);
+    virtualList.renderFrame = 0;
+    virtualList.renderToken += 1;
+    virtualList.resizeObserver?.disconnect();
+    virtualList.resizeObserver = null;
+    virtualList.layer = null;
+    virtualList.entries = [];
+    virtualList.heights = [];
+    virtualList.offsets = [];
+  }
+
+  function mountVirtualList(entries, data, visibleItems) {
+    const viewKey = [
+      state.folderId,
+      [...state.tagFilter].sort().join(','),
+      data.settings.sortMode,
+    ].join('|');
+    if (virtualList.viewKey !== viewKey) scroll.scrollTop = 0;
+    virtualList.viewKey = viewKey;
+    virtualList.entries = entries;
+    virtualList.data = data;
+    virtualList.visibleItems = visibleItems;
+    virtualList.heights = entries.map((entry) => entry.type === 'section' ? SECTION_HEIGHT_ESTIMATE : ITEM_HEIGHT_ESTIMATE);
+    rebuildVirtualOffsets();
+
+    const root = h('div', { class: 'virtual-list' });
+    const layer = h('div', { class: 'virtual-list-layer' });
+    root.append(layer);
+    root.style.height = `${virtualList.offsets.at(-1) || 0}px`;
+    scroll.classList.add('virtual-scroll');
+    scroll.append(root);
+    virtualList.root = root;
+    virtualList.layer = layer;
+    const renderToken = ++virtualList.renderToken;
+    virtualList.resizeObserver = new ResizeObserver((records) => {
+      if (renderToken !== virtualList.renderToken || !virtualList.root) return;
+      let changed = false;
+      let heightBeforeViewport = 0;
+      for (const record of records) {
+        const index = Number(record.target.dataset.virtualIndex);
+        if (!Number.isInteger(index) || index < 0 || index >= virtualList.heights.length) continue;
+        const height = Math.max(1, record.borderBoxSize?.[0]?.blockSize || record.contentRect.height);
+        const delta = height - virtualList.heights[index];
+        if (Math.abs(delta) < 0.5) continue;
+        virtualList.heights[index] = height;
+        if (index < virtualList.start) heightBeforeViewport += delta;
+        changed = true;
+      }
+      if (!changed) return;
+      rebuildVirtualOffsets();
+      virtualList.root.style.height = `${virtualList.offsets.at(-1) || 0}px`;
+      if (heightBeforeViewport) scroll.scrollTop += heightBeforeViewport;
+      scheduleVirtualRender();
+    });
+    renderVirtualWindow();
+  }
+
+  function rebuildVirtualOffsets() {
+    const offsets = [0];
+    for (const height of virtualList.heights) offsets.push(offsets.at(-1) + height);
+    virtualList.offsets = offsets;
+  }
+
+  function scheduleVirtualRender() {
+    if (!virtualList.layer || virtualList.renderFrame) return;
+    virtualList.renderFrame = requestAnimationFrame(() => {
+      virtualList.renderFrame = 0;
+      renderVirtualWindow();
+    });
+  }
+
+  function renderVirtualWindow() {
+    const { layer, entries, offsets, data, visibleItems } = virtualList;
+    if (!layer || !entries.length) return;
+    const top = Math.max(0, scroll.scrollTop - VIRTUAL_OVERSCAN);
+    const bottom = scroll.scrollTop + (scroll.clientHeight || 600) + VIRTUAL_OVERSCAN;
+    const start = Math.max(0, findOffsetIndex(offsets, top) - 1);
+    const end = Math.min(entries.length, findOffsetIndex(offsets, bottom) + 1);
+    virtualList.start = start;
+    virtualList.resizeObserver?.disconnect();
+    layer.replaceChildren();
+    for (let index = start; index < end; index += 1) {
+      const entry = entries[index];
+      const wrapper = h('div', { class: 'virtual-entry', dataset: { virtualIndex: index } });
+      wrapper.style.top = `${offsets[index]}px`;
+      wrapper.append(
+        entry.type === 'section'
+          ? sectionLabel(icon(entry.icon, 13), entry.label)
+          : card(entry.item, data, visibleItems)
+      );
+      layer.append(wrapper);
+      virtualList.resizeObserver?.observe(wrapper);
     }
   }
 
-  function renderHeader(data) {
+  function findOffsetIndex(offsets, value) {
+    let low = 0;
+    let high = offsets.length - 1;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (offsets[mid] <= value) low = mid;
+      else high = mid - 1;
+    }
+    return low;
+  }
+
+  function renderHeader(data, count) {
     const title =
       state.folderId === 'all' ? '全部收藏' : nameOf(state.folderId, data);
-    const count = data.items.filter(
-      (it) => state.folderId === 'all' || it.folderId === state.folderId
-    ).length;
     const custom = data.settings.sortMode === 'custom';
     const selectButton = h('button', {
       class: `icon-btn selection-toggle${selectionMode ? ' active' : ''}`,
@@ -307,8 +433,10 @@ export function createCollectionTab(ctx) {
   }
 
   function selectVisible(data) {
-    const inFolder = (it) => state.folderId === 'all' || it.folderId === state.folderId;
-    const tagOk = (it) => [...state.tagFilter].every((t) => (it.tags || []).some((x) => x.toLowerCase() === t.toLowerCase()));
+    const folderStats = buildFolderStats(data);
+    const scope = folderScope(state.folderId, folderStats);
+    const inFolder = (it) => !scope || scope.has(it.folderId);
+    const tagOk = (it) => [...state.tagFilter].every((tag) => (it.tags || []).some((x) => x.toLowerCase() === tag.toLowerCase()));
     data.items.filter((it) => inFolder(it) && tagOk(it)).forEach((it) => selectedItems.add(it.id));
     renderAll();
   }

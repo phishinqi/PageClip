@@ -7,7 +7,13 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Release package: release/PageClip-v1.6.2.zip
+- Release package: release/PageClip-v1.6.3.zip
+
+## 1.6.3 release notes
+
+- Fixed recursive folder counts and parent-folder browsing for nested collections.
+- Fixed folder count alignment and made the folder rail width drag smoother.
+- Virtualized large collection lists so folders with around 1,400 saved pages remain responsive.
 
 ## Short description
 

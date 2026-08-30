@@ -198,6 +198,22 @@ mark {
   position: relative;
   padding: 6px 8px 40px;
 }
+.virtual-list {
+  position: relative;
+  width: 100%;
+}
+.virtual-list-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+}
+.virtual-entry {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flow-root;
+  box-sizing: border-box;
+}
 
 #view-search { flex-direction: column; }
 #view-search .scroll { padding-top: 10px; }
@@ -1171,18 +1187,19 @@ body.rail-resizing * { cursor: col-resize !important; }
 .feature-card:focus-within .card-actions { opacity: 1; pointer-events: auto; transform: translate(0, 0); }
 .feature-card .card-actions { z-index: 2; }
 
-/* 文件夹行的操作区参与 flex 排版，给标题/数量预留真实空间，避免窄侧栏重叠。 */
+/* 文件夹数字统一右对齐；操作区悬浮覆盖，不参与数字列的 flex 排版。 */
+.rail-row .row-count { margin-left: auto; }
 .rail-row .row-actions {
-  position: static;
-  flex: none;
-  margin-left: auto;
-  transform: none;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translate(4px, -50%);
 }
 .rail-row .row-actions:empty { display: none; }
 .rail-row:hover .row-actions,
 .rail-row:focus-within .row-actions,
 .rail-row.has-actions:hover .row-actions,
-.rail-row.has-actions:focus-within .row-actions { transform: none; }
+.rail-row.has-actions:focus-within .row-actions { transform: translate(0, -50%); }
 
 /* 窄栏优先保证文件夹名称可读；拖宽后恢复完整三按钮操作区。 */
 @container folder-rail (max-width: 205px) {
