@@ -174,6 +174,7 @@ export function createCollectionTab(ctx) {
 
     row.addEventListener('click', (e) => {
       if (e.target.closest('.row-actions') || e.target.closest('.caret')) return;
+      if (hasChildren) toggleColExpand(id);
       state.folderId = id;
       renderAll();
     });
@@ -183,6 +184,15 @@ export function createCollectionTab(ctx) {
         toggleColExpand(id);
       });
     }
+    row.addEventListener('keydown', (e) => {
+      if (!['Enter', ' '].includes(e.key) || e.target.closest('.row-actions')) return;
+      e.preventDefault();
+      if (kind === 'col-folder' && hasChildren) toggleColExpand(id);
+      if (kind === 'col-folder' || kind === 'col-all') {
+        state.folderId = id;
+        renderAll();
+      }
+    });
     if (kind === 'col-folder') {
       row.addEventListener('contextmenu', (e) => {
         e.preventDefault();
@@ -418,9 +428,9 @@ export function createCollectionTab(ctx) {
         }, icon('clock', 13), t('collection.time')),
         h('button', {
           class: `seg-btn${custom ? ' active' : ''}`,
-          title: '按自定义顺序（拖拽）排序',
+          title: '按手动排序顺序显示（可拖拽调整）',
           onclick: () => setSortMode('custom'),
-        }, icon('swap', 13), '自定义')
+        }, icon('swap', 13), t('collection.sortCustom'))
       ),
     ].filter(Boolean);
     header.replaceChildren(...headerChildren);
@@ -713,15 +723,15 @@ export function createCollectionTab(ctx) {
 
     function renderChips() {
       [...chipWrap.querySelectorAll('.chip')].forEach((c) => c.remove());
-      for (const t of tags) {
+      for (const tagName of tags) {
         const chip = h(
           'span',
           { class: 'chip' },
-          `#${t}`,
+          `#${tagName}`,
           h('button', { class: 'chip-x', title: t('collection.remove') }, icon('close', 11))
         );
         chip.querySelector('.chip-x').addEventListener('click', () => {
-          tags.splice(tags.indexOf(t), 1);
+          tags.splice(tags.indexOf(tagName), 1);
           renderChips();
         });
         chipWrap.insertBefore(chip, tagInput);

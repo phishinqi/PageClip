@@ -403,7 +403,7 @@
     "message": "By time"
   },
   "collection_sortCustom": {
-    "message": "Custom"
+    "message": "Manual order"
   },
   "collection_tags": {
     "message": "Tags"
@@ -487,7 +487,7 @@
     "message": "Moved to top level"
   },
   "collection_customSort": {
-    "message": "Custom ordering enabled"
+    "message": "Manual ordering enabled"
   },
   "collection_cannotDeleteUncategorized": {
     "message": "Uncategorized cannot be deleted"
