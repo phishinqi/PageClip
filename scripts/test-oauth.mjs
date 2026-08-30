@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const source = await readFile(new URL('../js/cloud-backup.js', import.meta.url), 'utf8');
 const executable = source
-  .replace(/^import[^;]+;\s*/m, '')
+  .replace(/^import[^;]+;\s*/gm, '')
   .replace(/^export\s+/gm, '')
   + '\n globalThis.__oauthTest = { getToken, parseOAuthCallback, isBraveBrowser };';
 

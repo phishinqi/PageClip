@@ -94,6 +94,7 @@
     { url: 'https://developer.chrome.com/blog/reading-list', title: 'Chrome Reading List', hasBeenRead: true, creationTime: Date.now() - 3 * 86400000, lastUpdateTime: Date.now() - 2 * 86400000 },
   ];
   const contextMenuListeners = [];
+  const mockAlarms = new Map();
   let readingPermission = true;
   let mockAuthEnabled = true;
   let mockDriveNextId = 1;
@@ -274,7 +275,7 @@
       onCommand: { addListener() {} },
     },
     sidePanel: { setPanelBehavior() { return Promise.resolve(); } },
-    alarms: { create() {}, onAlarm: mkListener('alarm') },
+    alarms: { create(name, info) { mockAlarms.set(name, info); }, clear(name) { mockAlarms.delete(name); return Promise.resolve(true); }, onAlarm: mkListener('alarm') },
     permissions: {
       async contains() { return readingPermission; },
       async request() { readingPermission = true; return true; },
@@ -309,7 +310,7 @@
   window.chrome = chromeMock;
   const nativeFetch = window.fetch?.bind(window);
   const driveResponse = (body, status = 200) => new Response(body == null ? '' : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
-  window.__pageclipMockDrive = { files: mockDriveFiles, setAuthEnabled(value) { mockAuthEnabled = !!value; } };
+  window.__pageclipMockDrive = { files: mockDriveFiles, setAuthEnabled(value) { mockAuthEnabled = !!value; }, alarms: mockAlarms };
   window.fetch = async (input, init = {}) => {
     const url = String(input);
     if (!url.includes('www.googleapis.com/drive/v3') && !url.includes('www.googleapis.com/upload/drive/v3')) return nativeFetch ? nativeFetch(input, init) : driveResponse({});

@@ -6,7 +6,7 @@ import {
 import { importBrowserBookmarks, importBookmarksHtml } from './js/bookmark-import.js';
 import { initI18n, applyI18n, onLocaleChanged, setLocalePreference, getLocalePreference, translateText, t } from './js/i18n.js';
 import { encryptBackup, decryptBackup, createPasswordVerifier, verifyBackupPassword, getOrCreateDeviceKey, exportEncryptedRecoveryKey, importEncryptedRecoveryKey } from './js/crypto-backup.js';
-import { connectGoogle, getConnectedAccount, signOutGoogle, uploadLatestBackup, downloadLatestBackup, getCloudBackupStatus } from './js/cloud-backup.js';
+import { AUTO_BACKUP_DEFAULT_HOURS, AUTO_BACKUP_INTERVALS, connectGoogle, getConnectedAccount, signOutGoogle, uploadLatestBackup, downloadLatestBackup, downloadBackup, listBackups, getCloudBackupStatus } from './js/cloud-backup.js';
 import { getCloudCardState } from './js/cloud-status.js';
 
 const root = document.getElementById('options-root');
@@ -84,12 +84,58 @@ function cloudCard() {
       connected ? null : button(t('settings.connect'), 'primary', connectCloud),
       connected ? button(t('settings.manualBackup'), 'primary', runCloudBackup) : null,
       connected ? button(t('settings.manualRestore'), '', runCloudRestore) : null,
+      connected ? button(t('settings.viewBackups'), '', showCloudBackups) : null,
       connected ? button(t('settings.exportRecovery'), '', exportRecoveryKey) : null,
       connected ? button(t('settings.importRecovery'), '', importRecoveryKey) : null,
       connected ? button(t('settings.signOut'), 'danger', disconnectCloud) : null
     ),
+    connected ? autoBackupControls() : null,
+    connected ? h('p', { class: 'desc recovery-note', text: t('settings.recoveryBinaryNote') }) : null,
     h('p', { class: 'desc cloud-note', text: t('settings.cloudNote') })
   ));
+}
+
+function autoBackupControls() {
+  const settings = data.settings?.cloudBackup || {};
+  const enabled = !!settings.autoBackupEnabled;
+  const interval = AUTO_BACKUP_INTERVALS.includes(Number(settings.autoBackupIntervalHours)) ? Number(settings.autoBackupIntervalHours) : AUTO_BACKUP_DEFAULT_HOURS;
+  const checkbox = h('input', { type: 'checkbox', checked: enabled });
+  const select = h('select', { class: 'auto-backup-select', disabled: !enabled, 'aria-label': t('settings.autoBackupInterval') });
+  for (const hours of AUTO_BACKUP_INTERVALS) {
+    const label = hours === 168 ? t('settings.autoBackupWeekly') : t('settings.autoBackupHours', { HOURS: hours });
+    select.append(h('option', { value: String(hours), text: label }));
+  }
+  select.value = String(interval);
+  checkbox.addEventListener('change', () => saveAutoBackupSettings(checkbox.checked, select.value, checkbox));
+  select.addEventListener('change', () => saveAutoBackupSettings(checkbox.checked, select.value, checkbox));
+  const last = settings.lastAutoBackupError ? t('settings.autoBackupError', { ERROR: settings.lastAutoBackupError }) : settings.lastAutoBackupAt ? t('settings.autoBackupLast', { TIME: new Date(settings.lastAutoBackupAt).toLocaleString() }) : t('settings.autoBackupNever');
+  return h('div', { class: 'auto-backup-controls' },
+    h('div', { class: 'auto-backup-header' }, h('strong', { text: t('settings.autoBackup') }), h('span', { class: 'desc', text: enabled ? t('settings.autoBackupEnabled') : t('settings.autoBackupDisabled') })),
+    h('label', { class: 'auto-backup-toggle' }, checkbox, h('span', { text: t('settings.autoBackupToggle') })),
+    h('label', { class: 'auto-backup-interval' }, h('span', { class: 'form-label', text: t('settings.autoBackupInterval') }), select),
+    h('p', { class: 'desc auto-backup-meta', text: last }),
+    h('p', { class: 'desc auto-backup-note', text: t('settings.autoBackupHint') })
+  );
+}
+
+async function saveAutoBackupSettings(enabled, rawInterval, checkbox) {
+  const interval = AUTO_BACKUP_INTERVALS.includes(Number(rawInterval)) ? Number(rawInterval) : AUTO_BACKUP_DEFAULT_HOURS;
+  if (enabled && !cloudStatus.connected) {
+    checkbox.checked = false;
+    await connectCloud();
+    if (!cloudStatus.connected) return;
+  }
+  try {
+    await updateSettings({ cloudBackup: { ...(data.settings?.cloudBackup || {}), autoBackupEnabled: enabled, autoBackupIntervalHours: interval, autoBackupMode: 'device-key' } });
+    await Promise.resolve(chrome.runtime.sendMessage?.({ type: 'schedule-auto-backup' })).catch(() => {});
+    data = await loadData();
+    cloudStatus = await getCloudBackupStatus();
+    render();
+    toast(t('settings.autoBackupSaved'));
+  } catch (error) {
+    checkbox.checked = !enabled;
+    toast(error.message || t('settings.autoBackupFailed'), 'error');
+  }
 }
 
 async function connectCloud() { try { await connectGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); render(); toast(t('settings.cloudConnected')); } catch (error) { toast(error.message || t('backup.googleFailed'), 'error'); } }
@@ -136,10 +182,12 @@ async function runCloudBackup() {
   } catch (error) { toast(error.message || t('backup.cloudFailed'), 'error'); }
 }
 
-async function runCloudRestore() {
+async function runCloudRestore() { return restoreCloudFile(null); }
+async function restoreCloudFile(fileId) {
   try {
-    if (!cloudStatus.connected) await connectGoogle();
-    const remote = await downloadLatestBackup();
+    if (!cloudStatus.connected) await connectCloud();
+    if (!cloudStatus.connected) return;
+    const remote = fileId ? await downloadBackup(fileId, true) : await downloadLatestBackup();
     let options = {};
     if (remote.envelope.encryption?.mode === 'password') { const password = await askPassword(t('backup.enter'), false); if (!password) return; options.password = password; }
     else if (remote.envelope.encryption?.mode === 'device-key') options.key = await getOrCreateDeviceKey();
@@ -151,6 +199,33 @@ async function runCloudRestore() {
   } catch (error) { toast(error.message || t('backup.restoreFailed'), 'error'); }
 }
 
+async function showCloudBackups() {
+  try {
+    const files = await listBackups(true);
+    const dialog = h('dialog', { class: 'option-dialog' });
+    const list = h('div', { class: 'backup-history-list' });
+    if (!files.length) list.append(h('p', { class: 'empty', text: t('settings.noBackups') }));
+    for (const file of files) {
+      const isLatest = file.name === 'PageClip-latest.enc';
+      const size = Math.max(0, Math.round(Number(file.size || 0) / 1024));
+      const restore = button(t('settings.restoreBackup'), '', async () => {
+        dialog.close();
+        dialog.remove();
+        await restoreCloudFile(file.id);
+      });
+      list.append(h('div', { class: 'backup-history-row' },
+        h('div', { class: 'meta' }, h('strong', { text: isLatest ? t('settings.latestBackup') : t('settings.historyBackup') }), h('small', { text: t('settings.backupMeta', { TIME: new Date(file.modifiedTime || Date.now()).toLocaleString(), SIZE: size }) })),
+        restore
+      ));
+    }
+    const close = () => { if (dialog.open) dialog.close(); dialog.remove(); };
+    dialog.append(h('div', { class: 'option-dialog-card' }, h('h2', { text: t('settings.backupHistoryTitle') }), h('div', { class: 'option-dialog-body' }, list), h('div', { class: 'option-dialog-actions' }, button(t('button.cancel'), 'btn-ghost', close))));
+    dialog.addEventListener('cancel', close, { once: true });
+    document.body.append(dialog);
+    dialog.showModal();
+  } catch (error) { toast(error.message || t('settings.backupListFailed'), 'error'); }
+}
+
 async function showRestorePreview(file, diff) {
   const body = h('div', { class: 'restore-preview' }, h('p', { class: 'desc', text: t('settings.restoreTime', { TIME: new Date(file.modifiedTime || Date.now()).toLocaleString() }) }), h('div', { class: 'diff-grid' },
     stat(diff.cloud.items, t('settings.permanent')), stat(diff.cloud.quickSingles, t('settings.quickSingles')), stat(diff.cloud.quickGroups, t('settings.quickGroups')), stat(diff.cloud.inbox, 'Inbox'), stat(diff.cloud.recycleEntries, t('settings.recycleEntries')), stat(diff.added, t('backup.added')), stat(diff.same, t('backup.same')), stat(diff.conflicts, t('backup.conflicts')), stat(diff.localOnly, t('backup.localOnly'))
@@ -158,8 +233,8 @@ async function showRestorePreview(file, diff) {
   return optionDialog(t('backup.diffTitle'), body, [{ label: t('button.cancel'), kind: 'ghost', cancel: true }, { label: t('backup.merge'), kind: 'primary', onClick: async () => 'merge' }, { label: t('backup.replace'), kind: 'danger', onClick: async () => 'replace' }]);
 }
 
-async function exportRecoveryKey() { try { const password = await askPassword(t('backup.setupRecovery'), true, t('backup.recoveryLabel')); if (!password) return; const file = await exportEncryptedRecoveryKey(password); downloadText(JSON.stringify(file, null, 2), 'PageClip-device-recovery-key.json', 'application/json'); toast(t('settings.recoveryExported')); } catch (error) { toast(error.message || t('backup.failed'), 'error'); } }
-function importRecoveryKey() { const input = h('input', { type: 'file', accept: '.json,application/json' }); input.addEventListener('change', async () => { const file = input.files?.[0]; if (!file) return; try { const password = await askPassword('输入恢复密钥密码', false, t('backup.recoveryLabel')); if (!password) return; await importEncryptedRecoveryKey(file, password); toast(t('settings.recoveryImported')); } catch (error) { toast(error.message || t('backup.restoreFailed'), 'error'); } }); input.click(); }
+async function exportRecoveryKey() { try { const password = await askPassword(t('backup.setupRecovery'), true, t('backup.recoveryLabel')); if (!password) return; const file = await exportEncryptedRecoveryKey(password); downloadBinary(file, 'PageClip-device-recovery-key.pckey', 'application/octet-stream'); toast(t('settings.recoveryExported')); } catch (error) { toast(error.message || t('backup.failed'), 'error'); } }
+function importRecoveryKey() { const input = h('input', { type: 'file', accept: '.pckey,.bin,.json,application/octet-stream,application/json' }); input.addEventListener('change', async () => { const file = input.files?.[0]; if (!file) return; try { const password = await askPassword('输入恢复密钥密码', false, t('backup.recoveryLabel')); if (!password) return; await importEncryptedRecoveryKey(file, password); toast(t('settings.recoveryImported')); } catch (error) { toast(error.message || t('backup.restoreFailed'), 'error'); } }); input.click(); }
 
 function optionDialog(title, body, buttons) {
   return new Promise((resolve) => {
@@ -255,6 +330,7 @@ function collectionHtml(d) { return listHtml('PageClip 收藏', collectionRows()
 function quickHtml(d) { return listHtml('PageClip 快捷收藏夹', quickRows(), ['集合', '标题', '网址', '类型', '更新时间']); }
 function inboxHtml(d) { return listHtml('PageClip Inbox', inboxRows(), ['标题', '网址', '状态', '创建时间']); }
 function downloadText(text, name, type) { const url = URL.createObjectURL(new Blob([text], { type: type + ';charset=utf-8' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+function downloadBinary(bytes, name, type) { const url = URL.createObjectURL(new Blob([bytes], { type })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 
 async function exportJson() { downloadText(JSON.stringify(exportPayload(data), null, 2), 'PageClip-备份-' + dateStamp() + '.json', 'application/json'); toast('JSON 备份已导出'); }
 function chooseJson() { const input = h('input', { type: 'file', accept: '.json,application/json' }); input.addEventListener('change', async () => { const file = input.files?.[0]; if (!file) return; try { const payload = JSON.parse(await file.text()); const mode = confirm('选择“确定”替换现有 PageClip 数据；选择“取消”执行合并导入。') ? 'replace' : 'merge'; const result = await importPayload(payload, mode); data = await loadData(); render(); toast('导入完成：新增 ' + result.itemsAdded + ' 条收藏'); } catch (error) { toast(error.message || '导入失败', 'error'); } }); input.click(); }

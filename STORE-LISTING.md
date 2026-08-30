@@ -7,7 +7,7 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Release package: release/PageClip-v1.5.1.zip
+- Release package: release/PageClip-v1.6.0.zip
 
 ## Short description
 
@@ -17,7 +17,7 @@ English: A local-first Chrome sidebar for bookmarks, quick access, Inbox, and en
 
 ## Detailed description
 
-PageClip keeps your browser workflow organized without mixing permanent bookmarks, temporary reading items, quick tab collections, and Chrome native bookmarks into one list. Save pages to a local-first collection, add folders, tags, and notes, preserve quick tab groups, use a 30-day recycle bin, and manually back up the complete PageClip data set to Google Drive after client-side encryption.
+PageClip keeps your browser workflow organized without mixing permanent bookmarks, temporary reading items, quick tab collections, and Chrome native bookmarks into one list. Save pages to a local-first collection, add folders, tags, and notes, preserve quick tab groups, use a 30-day recycle bin, manually or automatically back up the complete PageClip data set to Google Drive after client-side encryption, and browse retained backup history.
 
 PageClip does not modify Chrome bookmarks when importing or restoring PageClip cloud data. Google Drive backups are encrypted before upload, and PageClip does not operate a separate application server, advertising system, or analytics tracker.
 

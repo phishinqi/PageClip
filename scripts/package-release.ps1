@@ -4,9 +4,11 @@ $root = Split-Path -Parent $PSScriptRoot
 & node (Join-Path $PSScriptRoot 'test-oauth.mjs')
 & node (Join-Path $PSScriptRoot 'test-cloud-backup.mjs')
 & node (Join-Path $PSScriptRoot 'test-cloud-status.mjs')
+& node (Join-Path $PSScriptRoot 'test-auto-backup.mjs')
+& node (Join-Path $PSScriptRoot 'test-recovery-binary.mjs')
 $releaseDir = Join-Path $root 'release'
-$stage = Join-Path $releaseDir 'PageClip-v1.5.1'
-$zip = Join-Path $releaseDir 'PageClip-v1.5.1.zip'
+$stage = Join-Path $releaseDir 'PageClip-v1.6.0'
+$zip = Join-Path $releaseDir 'PageClip-v1.6.0.zip'
 
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
@@ -26,7 +28,7 @@ foreach ($relative in $directories) {
 }
 
 $manifest = Get-Content -LiteralPath (Join-Path $stage 'manifest.json') -Raw | ConvertFrom-Json
-if ($manifest.version -ne '1.5.1') { throw "Unexpected manifest version: $($manifest.version)" }
+if ($manifest.version -ne '1.6.0') { throw "Unexpected manifest version: $($manifest.version)" }
 if ($manifest.oauth2.client_id -ne '996608683771-ab2q6ld3qnh85ckd31fcrgeifbid9pp1.apps.googleusercontent.com') { throw 'Unexpected OAuth client ID' }
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/cloud-backup.js'))) { throw 'cloud-backup.js missing' }
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/crypto-backup.js'))) { throw 'crypto-backup.js missing' }

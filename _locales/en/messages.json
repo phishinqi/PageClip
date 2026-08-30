@@ -850,13 +850,113 @@
     "message": "Manual restore"
   },
   "settings_exportRecovery": {
-    "message": "Export device recovery key"
+    "message": "Export binary recovery key"
   },
   "settings_importRecovery": {
-    "message": "Import device recovery key"
+    "message": "Import recovery key"
+  },
+
+  "settings_viewBackups": {
+    "message": "View backups"
+  },
+  "settings_backupHistoryTitle": {
+    "message": "Cloud backup history"
+  },
+  "settings_latestBackup": {
+    "message": "Current backup"
+  },
+  "settings_historyBackup": {
+    "message": "Historical backup"
+  },
+  "settings_restoreBackup": {
+    "message": "Restore this backup"
+  },
+  "settings_noBackups": {
+    "message": "No cloud backups"
+  },
+  "settings_backupListFailed": {
+    "message": "Failed to read backup list: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_backupMeta": {
+    "message": "$TIME$ · $SIZE$ KB",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_autoBackup": {
+    "message": "Automatic backup"
+  },
+  "settings_autoBackupHint": {
+    "message": "Automatic backups use the device key and never store a backup password; export and keep a recovery key for cross-device restore."
+  },
+  "settings_autoBackupToggle": {
+    "message": "Enable automatic backup"
+  },
+  "settings_autoBackupEnabled": {
+    "message": "Enabled"
+  },
+  "settings_autoBackupDisabled": {
+    "message": "Disabled"
+  },
+  "settings_autoBackupInterval": {
+    "message": "Backup interval"
+  },
+  "settings_autoBackupHours": {
+    "message": "Every $HOURS$ hours",
+    "placeholders": {
+      "hours": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_autoBackupWeekly": {
+    "message": "Weekly"
+  },
+  "settings_autoBackupNever": {
+    "message": "No automatic backup has run yet"
+  },
+  "settings_autoBackupLast": {
+    "message": "Last automatic backup: $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_autoBackupError": {
+    "message": "Last automatic backup failed: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_autoBackupSaved": {
+    "message": "Automatic backup settings saved"
+  },
+  "settings_autoBackupFailed": {
+    "message": "Failed to save automatic backup settings: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
   },
   "settings_signOut": {
     "message": "Sign out and switch account"
+  },
+  "settings_recoveryBinaryNote": {
+    "message": "Recovery keys are exported as encrypted binary files (.pckey); the recovery-key password is still required and cannot be recovered if lost."
   },
   "settings_cloudNote": {
     "message": "Choose password or device-key encryption for each backup. Device-key restore across devices requires an encrypted recovery-key file."

@@ -1,8 +1,14 @@
 // Google Drive appDataFolder：只保存加密后的 PageClip 密文包。
-import { loadData, updateSettings } from './store.js';
+import { loadData, updateSettings, getCloudBackupPayload } from './store.js';
+import { encryptBackup, getOrCreateDeviceKey } from './crypto-backup.js';
 
 export const BACKUP_FILE_NAME = 'PageClip-latest.enc';
 export const BACKUP_MIME = 'application/octet-stream';
+export const AUTO_BACKUP_ALARM = 'pageclip-auto-backup';
+export const AUTO_BACKUP_DEFAULT_HOURS = 24;
+export const AUTO_BACKUP_INTERVALS = [6, 12, 24, 168];
+const BACKUP_HISTORY_PREFIX = 'PageClip-backup-';
+const BACKUP_HISTORY_LIMIT = 20;
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const CLOUD_SETTINGS = 'cloudBackup';
@@ -177,56 +183,105 @@ export async function signOutGoogle() {
   try { await chrome.identity?.clearAllCachedAuthTokens?.(); } catch {}
   const data = await loadData();
   const settings = cloudSettings(data);
-  await updateSettings({ [CLOUD_SETTINGS]: { ...settings, googleAccountEmail: null, driveFileId: null, lastBackupAt: null, lastBackupSize: null, lastEncryptionMode: null } });
+  await updateSettings({ [CLOUD_SETTINGS]: { ...settings, googleAccountEmail: null, driveFileId: null, lastBackupAt: null, lastBackupSize: null, lastEncryptionMode: null, autoBackupEnabled: false } });
   return { signedOut: true };
 }
 
-async function listBackupFiles(interactive = true) {
-  const q = "name = '" + BACKUP_FILE_NAME + "' and trashed = false";
-  const query = new URLSearchParams({ spaces: 'appDataFolder', q, pageSize: '100', orderBy: 'modifiedTime desc', fields: 'files(id,name,size,createdTime,modifiedTime,mimeType)' });
+function backupQuery(includeHistory = false) {
+  const nameQuery = includeHistory ? "(name = '" + BACKUP_FILE_NAME + "' or name contains '" + BACKUP_HISTORY_PREFIX + "')" : "name = '" + BACKUP_FILE_NAME + "'";
+  return nameQuery + ' and trashed = false';
+}
+async function listBackupFiles(interactive = true, includeHistory = false) {
+  const query = new URLSearchParams({ spaces: 'appDataFolder', q: backupQuery(includeHistory), pageSize: '100', orderBy: 'modifiedTime desc', fields: 'files(id,name,size,createdTime,modifiedTime,mimeType)' });
   const result = await driveRequest(DRIVE_API + '/files?' + query.toString(), { interactive });
   return Array.isArray(result?.files) ? result.files : [];
 }
-
+export async function listBackups(interactive = true) {
+  return listBackupFiles(interactive, true);
+}
 export async function findLatestBackup(interactive = true) {
-  const files = await listBackupFiles(interactive);
-  return files[0] || null;
+  const files = await listBackupFiles(interactive, false);
+  return files.sort((a, b) => String(b.modifiedTime || '').localeCompare(String(a.modifiedTime || '')))[0] || null;
 }
-
-async function uploadMedia(fileId, serialized) {
-  return driveRequest(DRIVE_UPLOAD_API + '/files/' + encodeURIComponent(fileId) + '?uploadType=media&fields=id,name,size,createdTime,modifiedTime,mimeType', { method: 'PATCH', headers: { 'Content-Type': BACKUP_MIME }, body: serialized });
+async function uploadMedia(fileId, serialized, interactive = true) {
+  return driveRequest(DRIVE_UPLOAD_API + '/files/' + encodeURIComponent(fileId) + '?uploadType=media&fields=id,name,size,createdTime,modifiedTime,mimeType', { method: 'PATCH', headers: { 'Content-Type': BACKUP_MIME }, body: serialized, interactive });
 }
-async function createDriveFile(serialized) {
-  const metadata = await driveRequest(DRIVE_API + '/files?fields=id,name,size,createdTime,modifiedTime,mimeType', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: BACKUP_FILE_NAME, parents: ['appDataFolder'], mimeType: BACKUP_MIME }) });
-  try { return await uploadMedia(metadata.id, serialized); } catch (error) { await driveRequest(DRIVE_API + '/files/' + encodeURIComponent(metadata.id), { method: 'DELETE' }).catch(() => {}); throw error; }
+async function createDriveFile(fileName, serialized, interactive = true) {
+  const metadata = await driveRequest(DRIVE_API + '/files?fields=id,name,size,createdTime,modifiedTime,mimeType', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: fileName, parents: ['appDataFolder'], mimeType: BACKUP_MIME }), interactive });
+  try { return await uploadMedia(metadata.id, serialized, interactive); } catch (error) { await driveRequest(DRIVE_API + '/files/' + encodeURIComponent(metadata.id), { method: 'DELETE', interactive }).catch(() => {}); throw error; }
 }
-
-export async function uploadLatestBackup(envelope) {
+async function createHistorySnapshot(serialized, interactive) {
+  const suffix = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  return createDriveFile(BACKUP_HISTORY_PREFIX + suffix + '.enc', serialized, interactive);
+}
+async function pruneBackupHistory(files, interactive) {
+  const history = files.filter((file) => String(file.name || '').startsWith(BACKUP_HISTORY_PREFIX)).sort((a, b) => String(b.modifiedTime || '').localeCompare(String(a.modifiedTime || '')));
+  const stale = history.slice(BACKUP_HISTORY_LIMIT);
+  for (const file of stale) await driveRequest(DRIVE_API + '/files/' + encodeURIComponent(file.id), { method: 'DELETE', interactive }).catch(() => {});
+  return stale.length;
+}
+export async function uploadLatestBackup(envelope, options = {}) {
   if (!envelope || envelope.format !== 'pageclip-cloud-backup') throw new Error('备份密文包格式不正确');
+  const interactive = options.interactive !== false;
+  const keepHistory = options.keepHistory !== false;
   const serialized = JSON.stringify(envelope);
-  const files = await listBackupFiles();
+  const files = await listBackupFiles(interactive, true);
   const data = await loadData();
   const configuredId = data.settings?.[CLOUD_SETTINGS]?.driveFileId;
-  const target = files.find((file) => file.id === configuredId) || files[0];
-  const result = target ? await uploadMedia(target.id, serialized) : await createDriveFile(serialized);
-  const duplicates = files.filter((file) => file.id !== result.id);
-  for (const duplicate of duplicates) await driveRequest(DRIVE_API + '/files/' + encodeURIComponent(duplicate.id), { method: 'DELETE' }).catch(() => {});
+  const latestFiles = files.filter((file) => file.name === BACKUP_FILE_NAME);
+  const target = latestFiles.find((file) => file.id === configuredId) || latestFiles[0];
+  const result = target ? await uploadMedia(target.id, serialized, interactive) : await createDriveFile(BACKUP_FILE_NAME, serialized, interactive);
+  const duplicates = latestFiles.filter((file) => file.id !== result.id);
+  for (const duplicate of duplicates) await driveRequest(DRIVE_API + '/files/' + encodeURIComponent(duplicate.id), { method: 'DELETE', interactive }).catch(() => {});
+  let historyFile = null;
+  let historyError = null;
+  if (keepHistory) {
+    try { historyFile = await createHistorySnapshot(serialized, interactive); } catch (error) { historyError = error?.message || String(error); }
+  }
+  const historyFiles = [...files.filter((file) => String(file.name || '').startsWith(BACKUP_HISTORY_PREFIX)), ...(historyFile ? [historyFile] : [])];
+  const historyRemoved = await pruneBackupHistory(historyFiles, interactive);
   await saveCloudSettings({ driveFileId: result.id, lastBackupAt: Date.now(), lastBackupSize: new TextEncoder().encode(serialized).byteLength, lastEncryptionMode: envelope.encryption?.mode || null });
-  return { ...result, removedDuplicates: duplicates.length, size: new TextEncoder().encode(serialized).byteLength };
+  return { ...result, historyFile, historyError, historyRemoved, removedDuplicates: duplicates.length, size: new TextEncoder().encode(serialized).byteLength };
 }
-
-export async function downloadLatestBackup() {
-  const files = await listBackupFiles();
+async function downloadBackupFile(file, interactive = true) {
+  const token = await getToken(interactive);
+  let response = await fetch(DRIVE_API + '/files/' + encodeURIComponent(file.id) + '?alt=media', { headers: { Authorization: 'Bearer ' + token } });
+  if (response.status === 401) { await clearToken(); const retryToken = await getToken(interactive); response = await fetch(DRIVE_API + '/files/' + encodeURIComponent(file.id) + '?alt=media', { headers: { Authorization: 'Bearer ' + retryToken } }); }
+  const envelope = await jsonResponse(response);
+  return { file, envelope };
+}
+export async function downloadBackup(fileId = null, interactive = true) {
+  const files = await listBackupFiles(interactive, true);
   const data = await loadData();
   const configuredId = data.settings?.[CLOUD_SETTINGS]?.driveFileId;
-  const file = files.find((item) => item.id === configuredId) || files[0];
+  const file = fileId ? files.find((item) => item.id === fileId) : files.find((item) => item.id === configuredId && item.name === BACKUP_FILE_NAME) || files.find((item) => item.name === BACKUP_FILE_NAME);
   if (!file) throw new Error('Google Drive 中没有 PageClip 云备份');
-  const token = await getToken(true);
-  let response = await fetch(DRIVE_API + '/files/' + encodeURIComponent(file.id) + '?alt=media', { headers: { Authorization: 'Bearer ' + token } });
-  if (response.status === 401) { await clearToken(); const retryToken = await getToken(true); response = await fetch(DRIVE_API + '/files/' + encodeURIComponent(file.id) + '?alt=media', { headers: { Authorization: 'Bearer ' + retryToken } }); }
-  const envelope = await jsonResponse(response);
-  await saveCloudSettings({ driveFileId: file.id });
-  return { file, envelope };
+  const result = await downloadBackupFile(file, interactive);
+  if (file.name === BACKUP_FILE_NAME) await saveCloudSettings({ driveFileId: file.id });
+  return result;
+}
+export async function downloadLatestBackup() {
+  return downloadBackup(null, true);
+}
+let automaticBackupRunning = false;
+export async function runAutomaticBackup() {
+  if (automaticBackupRunning) return { skipped: true, reason: 'running' };
+  const data = await loadData();
+  const settings = cloudSettings(data);
+  if (!settings.autoBackupEnabled) return { skipped: true, reason: 'disabled' };
+  automaticBackupRunning = true;
+  try {
+    const key = await getOrCreateDeviceKey();
+    const envelope = await encryptBackup(getCloudBackupPayload(data), { mode: 'device-key', key });
+    const result = await uploadLatestBackup(envelope, { interactive: false, keepHistory: true, automatic: true });
+    await saveCloudSettings({ autoBackupMode: 'device-key', lastAutoBackupAt: Date.now(), lastAutoBackupError: null });
+    return { skipped: false, ...result };
+  } catch (error) {
+    await saveCloudSettings({ lastAutoBackupError: error?.message || String(error) }).catch(() => {});
+    throw error;
+  } finally {
+    automaticBackupRunning = false;
+  }
 }
 
 export async function getCloudBackupStatus() {

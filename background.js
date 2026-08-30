@@ -10,6 +10,7 @@ import {
   pruneRecycleBin,
 } from './js/store.js';
 import { initI18n, t, getMessages } from './js/i18n.js';
+import { runAutomaticBackup, AUTO_BACKUP_ALARM, AUTO_BACKUP_DEFAULT_HOURS, AUTO_BACKUP_INTERVALS } from './js/cloud-backup.js';
 
 const DEFAULT_TITLE = '打开 PageClip 侧边栏';
 
@@ -41,6 +42,16 @@ async function openFallbackPage(openSettings = false) {
 
 function getCurrentTab() {
   return chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => tab);
+}
+async function scheduleAutomaticBackup() {
+  if (!chrome.alarms?.create) return false;
+  const data = await loadData();
+  const settings = data.settings?.cloudBackup || {};
+  await Promise.resolve(chrome.alarms.clear?.(AUTO_BACKUP_ALARM)).catch(() => {});
+  if (!settings.autoBackupEnabled) return false;
+  const hours = AUTO_BACKUP_INTERVALS.includes(Number(settings.autoBackupIntervalHours)) ? Number(settings.autoBackupIntervalHours) : AUTO_BACKUP_DEFAULT_HOURS;
+  chrome.alarms.create(AUTO_BACKUP_ALARM, { delayInMinutes: 1, periodInMinutes: hours * 60 });
+  return true;
 }
 
 async function captureCurrent(kind, source) {
@@ -77,6 +88,7 @@ chrome.runtime.onInstalled.addListener(() => {
   configureSidePanel().catch(() => {});
   ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
   initI18n().catch(() => {});
+  scheduleAutomaticBackup().catch(() => {});
   chrome.alarms?.create?.('pageclip-prune-recycle', { periodInMinutes: 24 * 60 });
   createMenus().catch(() => {});
 });
@@ -84,12 +96,14 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
   configureSidePanel().catch(() => {});
   ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
+  scheduleAutomaticBackup().catch(() => {});
   chrome.alarms?.create?.('pageclip-prune-recycle', { periodInMinutes: 24 * 60 });
   createMenus().catch(() => {});
 });
 
 chrome.alarms?.onAlarm?.addListener((alarm) => {
   if (alarm.name === 'pageclip-prune-recycle') pruneRecycleBin().catch(() => {});
+  if (alarm.name === AUTO_BACKUP_ALARM) runAutomaticBackup().catch(() => {});
 });
 
 chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
@@ -124,13 +138,18 @@ chrome.action.onClicked.addListener(async () => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.bc_data?.newValue?.settings?.uiLocale !== changes.bc_data?.oldValue?.settings?.uiLocale) createMenus().catch(() => {});
+  if (area !== 'local' || !changes.bc_data) return;
+  if (changes.bc_data.newValue?.settings?.uiLocale !== changes.bc_data.oldValue?.settings?.uiLocale) createMenus().catch(() => {});
+  const oldCloud = changes.bc_data.oldValue?.settings?.cloudBackup || {};
+  const newCloud = changes.bc_data.newValue?.settings?.cloudBackup || {};
+  if (oldCloud.autoBackupEnabled !== newCloud.autoBackupEnabled || oldCloud.autoBackupIntervalHours !== newCloud.autoBackupIntervalHours) scheduleAutomaticBackup().catch(() => {});
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message?.type || !['capture-current', 'capture-quick', 'capture-inbox', 'sync-reading', 'open-manager', 'open-settings', 'get-i18n-messages'].includes(message.type)) return false;
+  if (!message?.type || !['capture-current', 'capture-quick', 'capture-inbox', 'sync-reading', 'open-manager', 'open-settings', 'get-i18n-messages', 'schedule-auto-backup'].includes(message.type)) return false;
   (async () => {
     if (message.type === 'get-i18n-messages') return { ok: true, locale: message.locale, messages: getMessages(message.locale) };
+    if (message.type === 'schedule-auto-backup') return { ok: true, scheduled: await scheduleAutomaticBackup() };
     const payload = message.payload || sender.tab || await getCurrentTab();
     if (message.type === 'open-manager' || message.type === 'open-settings') {
       await openFallbackPage(message.type === 'open-settings');

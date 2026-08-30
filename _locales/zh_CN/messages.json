@@ -850,13 +850,113 @@
     "message": "手动恢复"
   },
   "settings_exportRecovery": {
-    "message": "导出本机恢复密钥"
+    "message": "导出二进制恢复密钥"
   },
   "settings_importRecovery": {
-    "message": "导入本机恢复密钥"
+    "message": "导入恢复密钥"
+  },
+
+  "settings_viewBackups": {
+    "message": "查看备份"
+  },
+  "settings_backupHistoryTitle": {
+    "message": "云端备份记录"
+  },
+  "settings_latestBackup": {
+    "message": "当前备份"
+  },
+  "settings_historyBackup": {
+    "message": "历史备份"
+  },
+  "settings_restoreBackup": {
+    "message": "恢复此备份"
+  },
+  "settings_noBackups": {
+    "message": "暂无云端备份"
+  },
+  "settings_backupListFailed": {
+    "message": "读取备份列表失败：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_backupMeta": {
+    "message": "$TIME$ · $SIZE$ KB",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_autoBackup": {
+    "message": "自动备份"
+  },
+  "settings_autoBackupHint": {
+    "message": "自动备份使用本机密钥加密，不会保存备份密码；跨设备恢复需要导出并保管恢复密钥。"
+  },
+  "settings_autoBackupToggle": {
+    "message": "启用自动备份"
+  },
+  "settings_autoBackupEnabled": {
+    "message": "已启用"
+  },
+  "settings_autoBackupDisabled": {
+    "message": "未启用"
+  },
+  "settings_autoBackupInterval": {
+    "message": "备份周期"
+  },
+  "settings_autoBackupHours": {
+    "message": "每 $HOURS$ 小时",
+    "placeholders": {
+      "hours": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_autoBackupWeekly": {
+    "message": "每周"
+  },
+  "settings_autoBackupNever": {
+    "message": "尚未执行自动备份"
+  },
+  "settings_autoBackupLast": {
+    "message": "上次自动备份：$TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_autoBackupError": {
+    "message": "上次自动备份失败：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_autoBackupSaved": {
+    "message": "自动备份设置已保存"
+  },
+  "settings_autoBackupFailed": {
+    "message": "保存自动备份设置失败：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
   },
   "settings_signOut": {
     "message": "退出并更换账号"
+  },
+  "settings_recoveryBinaryNote": {
+    "message": "恢复密钥导出为加密二进制文件（.pckey）；文件仍需恢复密钥密码，丢失密码无法导入。"
   },
   "settings_cloudNote": {
     "message": "每次备份选择加密方式：备份密码或 Chrome 本机密钥。本机密钥跨设备恢复需要加密恢复密钥文件。"
