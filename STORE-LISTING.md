@@ -7,7 +7,12 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Release package: release/PageClip-v1.6.4.zip
+- Release package: release/PageClip-v1.6.5.zip
+
+## 1.6.5 hotfix release notes
+
+- Fixed a crash when opening or editing collection items with existing or newly added tags.
+- Preserved tag entry with Enter, English comma, and Chinese comma, plus duplicate prevention and the 12-tag limit.
 
 ## 1.6.4 release notes
 

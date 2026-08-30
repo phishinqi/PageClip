@@ -720,6 +720,7 @@ export function createCollectionTab(ctx) {
     const dl = h('datalist', { id: 'tag-suggest' });
     for (const t of allTags) dl.append(h('option', { value: t }));
     chipWrap.append(dl);
+    chipWrap.append(tagInput);
 
     function renderChips() {
       [...chipWrap.querySelectorAll('.chip')].forEach((c) => c.remove());
@@ -734,7 +735,8 @@ export function createCollectionTab(ctx) {
           tags.splice(tags.indexOf(tagName), 1);
           renderChips();
         });
-        chipWrap.insertBefore(chip, tagInput);
+        if (tagInput.parentNode === chipWrap) chipWrap.insertBefore(chip, tagInput);
+        else chipWrap.append(chip);
       }
     }
     tagInput.addEventListener('keydown', (e) => {
@@ -750,7 +752,6 @@ export function createCollectionTab(ctx) {
       }
     });
     renderChips();
-    chipWrap.append(tagInput);
 
     const body = h(
       'div',
