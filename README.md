@@ -84,3 +84,4 @@ OAuth client secret 不能放入 Chrome 扩展或提交到 GitHub；扩展内只
 - 目录结构见 `manifest.json` / `js/`（store 数据层、collection 收藏页签、bookmarks 书签页签、tree 拖拽、search 搜索、ui 基建）。
 - 本地预览 UI：起一个静态服务器（如 `python -m http.server`）后访问 `dev/preview.html`，会自动注入 chrome API mock，无需安装扩展即可调试界面。
 - 重新生成图标：`powershell -File make-icons.ps1`。
+- 固定开发 / 发布 Extension ID：将匹配的私钥放在仓库根目录 `v1.pem`（该文件已被 `.gitignore` 忽略），运行 `powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1`。脚本会从 PEM 校验并恢复开发用 `manifest.json` 的公开 `key`，然后在发布暂存目录删除 `key`，生成 `release/PageClip-v<version>.zip` 和使用同一私钥签名的 `release/PageClip-v<version>.crx`。若 PEM 与 manifest 的固定 key 不匹配，脚本会直接失败，不会生成错误的发布包。
