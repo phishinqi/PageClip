@@ -664,6 +664,9 @@
   "bookmarks_addedToBar": {
     "message": "已加入书签栏"
   },
+  "bookmarks_loadingMore": {
+    "message": "正在加载…"
+  },
   "settings_title": {
     "message": "PageClip 设置"
   },
@@ -855,7 +858,6 @@
   "settings_importRecovery": {
     "message": "导入恢复密钥"
   },
-
   "settings_viewBackups": {
     "message": "查看备份"
   },

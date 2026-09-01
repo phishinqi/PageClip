@@ -8,7 +8,7 @@ const executable = source
   .replace(/^export\s+/gm, '')
   + '\n globalThis.__oauthTest = { getToken, parseOAuthCallback, isBraveBrowser };';
 
-async function loadAuth({ brave = false, brands = [], nativeToken, nativeError, webCallback, includeWebApi = true } = {}) {
+async function loadAuth({ brave = false, brands = [], nativeToken, nativeError, webCallback, webFlow, includeWebApi = true } = {}) {
   const calls = { native: 0, web: [] };
   const identity = {
     async getAuthToken() {
@@ -24,7 +24,7 @@ async function loadAuth({ brave = false, brands = [], nativeToken, nativeError, 
   if (includeWebApi) {
     identity.launchWebAuthFlow = async (details) => {
       calls.web.push(details);
-      return webCallback ?? 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=web-token';
+      return webFlow ? webFlow(details, calls.web.length) : (webCallback ?? 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=web-token');
     };
   }
   const context = {
@@ -82,4 +82,38 @@ async function loadAuth({ brave = false, brands = [], nativeToken, nativeError, 
   await assert.rejects(() => test.getToken(true), /Brave Web OAuth API 不可用/);
 }
 
-console.log('OAuth behavior tests passed: 6 scenarios');
+{
+  let resolveWebFlow;
+  const pendingWebFlow = new Promise((resolve) => { resolveWebFlow = resolve; });
+  const { test, calls } = await loadAuth({ brave: true, webCallback: pendingWebFlow });
+  const first = test.getToken(true);
+  const second = test.getToken(true);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(calls.web.length, 1);
+  resolveWebFlow('https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=shared-token');
+  assert.equal(await first, 'shared-token');
+  assert.equal(await second, 'shared-token');
+}
+
+{
+  let rejectSilentFlow;
+  const silentWebFlow = new Promise((_, reject) => { rejectSilentFlow = reject; });
+  const { test, calls } = await loadAuth({
+    brave: true,
+    webFlow: (_, count) => count === 1
+      ? silentWebFlow
+      : 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=interactive-token',
+  });
+  const silent = test.getToken(false);
+  const interactive = test.getToken(true);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(calls.web.length, 1);
+  rejectSilentFlow(new Error('silent authorization unavailable'));
+  await assert.rejects(silent, /silent authorization unavailable/);
+  assert.equal(await interactive, 'interactive-token');
+  assert.equal(calls.web.length, 2);
+  const interactiveAuthUrl = new URL(calls.web[1].url);
+  assert.equal(interactiveAuthUrl.searchParams.get('prompt'), 'select_account');
+}
+
+console.log('OAuth behavior tests passed: 8 scenarios');

@@ -7,7 +7,12 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Release package: release/PageClip-v1.6.7.zip
+- Release package: release/PageClip-v1.6.8.zip
+
+## 1.6.8 release notes
+
+- Fixed truncation when expanding long Chrome bookmark folders; large folders now load additional direct children automatically while scrolling.
+- Prevented duplicate Brave Web OAuth authorization flows when an authorization request is already in progress.
 
 ## 1.6.7 release notes
 

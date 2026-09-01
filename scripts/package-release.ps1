@@ -1,5 +1,6 @@
 param(
-  [string]$ChromePath
+  [string]$ChromePath,
+  [switch]$ZipOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -8,13 +9,16 @@ $manifestPath = Join-Path $root 'manifest.json'
 $privateKey = Join-Path $root 'v1.pem'
 $keyTool = Join-Path $PSScriptRoot 'manifest-key.mjs'
 
-if (-not (Test-Path -LiteralPath $privateKey -PathType Leaf)) {
-  throw "Signing key PEM not found: $privateKey"
+$hasPrivateKey = Test-Path -LiteralPath $privateKey -PathType Leaf
+if (-not $hasPrivateKey -and -not $ZipOnly) {
+  throw "Signing key PEM not found: $privateKey. Use -ZipOnly to create the Chrome Web Store ZIP without a CRX."
 }
 
-# Keep the unpacked development manifest pinned to the same public key used for CRX signing.
-& node $keyTool set $manifestPath $privateKey
-if ($LASTEXITCODE -ne 0) { throw 'Failed to fix/verify the development manifest key' }
+# Keep the unpacked development manifest pinned to the same public key used for CRX signing when the PEM is available.
+if ($hasPrivateKey) {
+  & node $keyTool set $manifestPath $privateKey
+  if ($LASTEXITCODE -ne 0) { throw 'Failed to fix/verify the development manifest key' }
+}
 
 & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'check-syntax.ps1')
 & node (Join-Path $PSScriptRoot 'test-oauth.mjs')
@@ -23,6 +27,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to fix/verify the development manifest 
 & node (Join-Path $PSScriptRoot 'test-auto-backup.mjs')
 & node (Join-Path $PSScriptRoot 'test-recovery-binary.mjs')
 & node (Join-Path $PSScriptRoot 'test-collection-model.mjs')
+& node (Join-Path $PSScriptRoot 'test-bookmark-pagination.mjs')
 
 $sourceManifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 $version = [string]$sourceManifest.version
@@ -66,6 +71,12 @@ $forbidden = Get-ChildItem -LiteralPath $stage -Recurse -File | Select-String -P
 if ($forbidden) { throw 'Release package contains test credentials or private key material' }
 
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
+
+if ($ZipOnly) {
+  Write-Output "Created $zip"
+  Write-Output 'Skipped CRX signing because -ZipOnly was requested.'
+  exit 0
+}
 
 if ([string]::IsNullOrWhiteSpace($ChromePath)) {
   $chromeCandidates = @(
