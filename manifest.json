@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.6.5",
+  "version": "1.6.6",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3CMcQCvjAsX3yWTMMx3AZ0VaD47QOrvXozP1XPdDB1DWU4IZmh1rLveRg+roQcdT1gYufRsG6G2uPJFTTtIgq/x9Cw54D6RFg/m1A9ylzDmWiniWEf7iguEMLucM5rmD9/dgmeXUvPXj9ZPe9GoCLWLCz76b+YEHQVr3CGhivdItmnhMAMSNPib2u4iRUpWUpkOZ3+eOO84ykbkyLmRXO+CsyZlQT5OhTtuDEynwnlCST7FdxqrEfQEZ64WeR8Caz/+zEMNNQL/4ic6wrCskCYmiv60sot/Qio/16RvD7Yhu5lAyVf9cTOAGaL9ffOX2jDIcnIDGUCmhG6s66WCkMwIDAQAB",
   "description": "__MSG_appDescription__",
   "minimum_chrome_version": "114",
@@ -108,7 +108,7 @@
     }
   },
   "oauth2": {
-    "client_id": "996608683771-ab2q6ld3qnh85ckd31fcrgeifbid9pp1.apps.googleusercontent.com",
+    "client_id": "996608683771-c42ubb7c4rchv2du801tf7grp3abj8qo.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive.appdata"
     ]

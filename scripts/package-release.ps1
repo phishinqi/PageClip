@@ -27,7 +27,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to fix/verify the development manifest 
 $sourceManifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 $version = [string]$sourceManifest.version
 if ([string]::IsNullOrWhiteSpace($version)) { throw 'Manifest version is missing' }
-if ($sourceManifest.oauth2.client_id -ne '996608683771-ab2q6ld3qnh85ckd31fcrgeifbid9pp1.apps.googleusercontent.com') { throw 'Unexpected OAuth client ID' }
+if ($sourceManifest.oauth2.client_id -ne '996608683771-c42ubb7c4rchv2du801tf7grp3abj8qo.apps.googleusercontent.com') { throw 'Unexpected OAuth client ID' }
 
 $releaseDir = Join-Path $root 'release'
 $packageName = "PageClip-v$version"

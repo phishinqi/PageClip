@@ -2,6 +2,10 @@
 
 在浏览器侧边栏中浏览、搜索、**完整管理** Chrome 自带书签，同时拥有一套独立的收藏体系（标签 / 备注 / 文件夹 / 置顶 / 时间）。纯原生 JS（Manifest V3），无需构建，加载即用。
 
+## 1.6.6 更新说明
+
+- 更新 Chrome Extension OAuth Client ID，保持固定 Extension ID 的 Google Drive 授权配置一致。
+
 ## 1.6.5 热修说明
 
 - 修复收藏编辑窗口在已有标签或新增标签时可能触发 `Failed to execute 'insertBefore' on 'Node'` 的崩溃。

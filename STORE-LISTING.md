@@ -7,7 +7,11 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Release package: release/PageClip-v1.6.5.zip
+- Release package: release/PageClip-v1.6.6.zip
+
+## 1.6.6 release notes
+
+- Updated the Chrome Extension OAuth client configuration for Google Drive authorization.
 
 ## 1.6.5 hotfix release notes
 
