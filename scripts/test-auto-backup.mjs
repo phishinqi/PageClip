@@ -18,9 +18,9 @@ const data = {
 const files = [];
 const calls = [];
 let nextId = 1;
-const identity = { async getAuthToken() { calls.push(['auth']); return { token: 'auto-token' }; }, getRedirectURL() { return 'https://fimhgjmocneioennilphfkdejdebkmfe.chromiumapp.org/'; } };
+const identity = { async getAuthToken() { calls.push(['auth']); return { token: 'auto-token' }; }, getRedirectURL() { return 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/'; } };
 const context = {
-  chrome: { identity, runtime: { id: 'fimhgjmocneioennilphfkdejdebkmfe' } },
+  chrome: { identity, runtime: { id: 'mnapcpmijebakicgdflohgnjmndhlneg' } },
   navigator: { userAgentData: { brands: [] }, userAgent: '' },
   URL, URLSearchParams, TextEncoder, console,
   loadData: async () => structuredClone(data),

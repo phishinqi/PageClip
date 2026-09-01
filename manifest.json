@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.6.6",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3CMcQCvjAsX3yWTMMx3AZ0VaD47QOrvXozP1XPdDB1DWU4IZmh1rLveRg+roQcdT1gYufRsG6G2uPJFTTtIgq/x9Cw54D6RFg/m1A9ylzDmWiniWEf7iguEMLucM5rmD9/dgmeXUvPXj9ZPe9GoCLWLCz76b+YEHQVr3CGhivdItmnhMAMSNPib2u4iRUpWUpkOZ3+eOO84ykbkyLmRXO+CsyZlQT5OhTtuDEynwnlCST7FdxqrEfQEZ64WeR8Caz/+zEMNNQL/4ic6wrCskCYmiv60sot/Qio/16RvD7Yhu5lAyVf9cTOAGaL9ffOX2jDIcnIDGUCmhG6s66WCkMwIDAQAB",
+  "version": "1.6.7",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvWDc4yWa/1DuQSUiHV14Q1ViiR51KGgB1jiO52VFclHOE3eYsBb3882YSdwmTytgdRBtmc9l7HYiavJpH/Cuw1r7tLHCm/zFyM7KRpgbLFnRTJtyMJf0R6B15vs62Zha2Fyz1Xh1QbW4SUFghUB7c0Z6M7frSeclFOGs2sV0fsgowfjMICeYV0SDfvgwztsYeQDLRU2HKioInieXLRw7zTk2jgz3sctG+A6EIb6X2kHNu82n4LN0vUIu77na5Az1mRUN98nQ4GIVRzJTylMONH3ELG145VOy6EspqLFrGrMZ0JAWb1wwRMCiSochsvRsv06g5w6PQacNoqZUi5YMVwIDAQAB",
   "description": "__MSG_appDescription__",
   "minimum_chrome_version": "114",
   "permissions": [

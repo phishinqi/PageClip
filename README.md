@@ -2,6 +2,10 @@
 
 在浏览器侧边栏中浏览、搜索、**完整管理** Chrome 自带书签，同时拥有一套独立的收藏体系（标签 / 备注 / 文件夹 / 置顶 / 时间）。纯原生 JS（Manifest V3），无需构建，加载即用。
 
+## 1.6.7 更新说明
+
+- 切换到新的 Chrome Extension OAuth Client，并同步固定 Extension ID。
+
 ## 1.6.6 更新说明
 
 - 更新 Chrome Extension OAuth Client ID，保持固定 Extension ID 的 Google Drive 授权配置一致。
@@ -74,12 +78,12 @@
 
 Google Drive 备份在 Chrome 使用 `chrome.identity.getAuthToken()`，在 Brave 回退到 `chrome.identity.launchWebAuthFlow()`；不要把 Desktop/Native App 的 custom URI 流程直接交给 Chrome 的 `getAuthToken()`。首次配置时：
 
-1. 先在 `chrome://extensions` 加载本目录，复制页面显示的 **Extension ID**。当前仓库的固定 `key` 对应 ID 为 `fimhgjmocneioennilphfkdejdebkmfe`。
+1. 先在 `chrome://extensions` 加载本目录，复制页面显示的 **Extension ID**。当前仓库的固定 `key` 对应 ID 为 `mnapcpmijebakicgdflohgnjmndhlneg`。
 2. 在 Google Cloud 的 OAuth Client 页面创建 **Chrome Extension** 类型 client。
 3. 将上一步的 Extension ID 填入 **Item ID**，启用 Google Drive API，并将生成的 client ID 填入 `manifest.json` 的 `oauth2.client_id`。
 4. 修改 `manifest.json` 后，在 `chrome://extensions` 点击 PageClip 的「重新加载」，再回到设置页连接 Google。
 
-如果 Chrome 报错 `Custom URI scheme is not supported on Chrome apps` 或错误 400 `invalid_request`，先确认扩展 ID 和 Chrome Extension Client 的 Item ID。Chrome 正常、Brave 失败时，这是 Brave 的 `getAuthToken()` 兼容问题；PageClip 会回退到 Web OAuth 流程。Brave 使用的 Web OAuth Client 必须额外允许回调地址 `https://fimhgjmocneioennilphfkdejdebkmfe.chromiumapp.org/`。
+如果 Chrome 报错 `Custom URI scheme is not supported on Chrome apps` 或错误 400 `invalid_request`，先确认扩展 ID 和 Chrome Extension Client 的 Item ID。Chrome 正常、Brave 失败时，这是 Brave 的 `getAuthToken()` 兼容问题；PageClip 会回退到 Web OAuth 流程。Brave 使用的 Web OAuth Client 必须额外允许回调地址 `https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/`。
 
 OAuth client secret 不能放入 Chrome 扩展或提交到 GitHub；扩展内只能使用公开的 client ID。如果 secret 曾经出现在聊天、日志或仓库中，应立即在 Google Cloud 撤销并重新生成。
 

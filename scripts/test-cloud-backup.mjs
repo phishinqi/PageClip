@@ -12,17 +12,17 @@ function makeResponse(body, status = 200) {
   return { ok: status >= 200 && status < 300, status, async json() { return body; }, async text() { return JSON.stringify(body); } };
 }
 
-async function loadAuth({ brave = false, profile = {}, userInfo = null, nativeToken = { token: 'native-token' }, webCallback = 'https://fimhgjmocneioennilphfkdejdebkmfe.chromiumapp.org/#access_token=web-token' } = {}) {
+async function loadAuth({ brave = false, profile = {}, userInfo = null, nativeToken = { token: 'native-token' }, webCallback = 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=web-token' } = {}) {
   const calls = { native: 0, web: [], userInfo: 0, saves: [] };
   const data = { schema: 3, settings: { cloudBackup: {} } };
   const identity = {
     async getAuthToken() { calls.native += 1; return nativeToken; },
     async getProfileUserInfo() { return profile; },
-    getRedirectURL() { return 'https://fimhgjmocneioennilphfkdejdebkmfe.chromiumapp.org/'; },
+    getRedirectURL() { return 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/'; },
     async launchWebAuthFlow(details) { calls.web.push(details); return webCallback; },
   };
   const context = {
-    chrome: { identity, runtime: { id: 'fimhgjmocneioennilphfkdejdebkmfe' } },
+    chrome: { identity, runtime: { id: 'mnapcpmijebakicgdflohgnjmndhlneg' } },
     navigator: brave ? { brave: { async isBrave() { return true; } }, userAgentData: { brands: [] } } : { userAgentData: { brands: [] }, userAgent: '' },
     URL,
     URLSearchParams,

@@ -7,7 +7,11 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Release package: release/PageClip-v1.6.6.zip
+- Release package: release/PageClip-v1.6.7.zip
+
+## 1.6.7 release notes
+
+- Switched to the new Chrome Extension OAuth client and synchronized the fixed Extension ID.
 
 ## 1.6.6 release notes
 
