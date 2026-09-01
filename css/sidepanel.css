@@ -668,6 +668,11 @@ body.rail-resizing * { cursor: col-resize !important; }
   user-select: none;
 }
 #view-bookmarks { flex-direction: column; }
+/* Chrome 书签树用主列表滚动；不继承收藏文件夹栏的 2400px 展开上限。 */
+.bm-folder-children { display: none; max-height: none; opacity: 1; overflow: visible; transition: none; }
+.bm-folder-children.is-expanded { display: block; max-height: none; opacity: 1; }
+.bm-load-sentinel { height: 1px; pointer-events: none; }
+.bm-load-status { min-height: 28px; display: flex; align-items: center; color: var(--text-faint); font-size: 11px; }
 
 .row {
   display: flex;

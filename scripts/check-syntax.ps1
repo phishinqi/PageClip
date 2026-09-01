@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $excluded = '\\(release|Bookmark_Sidebar-master|VertiTab|\.git)\\'
-$files = Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.js' | Where-Object { $_.FullName -notmatch $excluded } | Sort-Object FullName -Unique
+$files = Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object { $_.Extension -in @('.js', '.mjs') -and $_.FullName -notmatch $excluded } | Sort-Object FullName -Unique
 foreach ($file in $files) {
   $output = & node --check $file.FullName 2>&1
   if ($LASTEXITCODE -ne 0) {

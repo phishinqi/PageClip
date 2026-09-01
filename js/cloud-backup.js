@@ -19,6 +19,8 @@ const OAUTH_SCOPES = ['https://www.googleapis.com/auth/drive.appdata'];
 const BRAVE_OAUTH_SCOPES = [...OAUTH_SCOPES, 'openid', 'https://www.googleapis.com/auth/userinfo.email'];
 const GOOGLE_USERINFO_API = 'https://www.googleapis.com/oauth2/v3/userinfo';
 let tokenCache = null;
+let pendingTokenRequest = null;
+let pendingInteractiveUpgrade = null;
 
 function identityApi() {
   if (!chrome.identity) throw new Error('当前浏览器不支持 Google OAuth');
@@ -99,8 +101,7 @@ async function resolveAccountInfo(token) {
     return { email: '', error: 'Google 账号邮箱读取失败：' + (error?.message || String(error)) };
   }
 }
-async function getToken(interactive = true) {
-  if (tokenCache) return tokenCache;
+async function getTokenOnce(interactive) {
   const identity = identityApi();
   const brave = await isBraveBrowser();
   let result;
@@ -135,6 +136,38 @@ async function getToken(interactive = true) {
   if (!token) throw new Error('未获取到 Google OAuth Token');
   tokenCache = token;
   return token;
+}
+
+function startTokenRequest(interactive) {
+  const request = { interactive, promise: null };
+  request.promise = getTokenOnce(interactive);
+  pendingTokenRequest = request;
+  request.promise.then(
+    () => { if (pendingTokenRequest === request) pendingTokenRequest = null; },
+    () => { if (pendingTokenRequest === request) pendingTokenRequest = null; }
+  );
+  return request.promise;
+}
+
+function upgradeToInteractiveToken(silentRequest) {
+  if (pendingInteractiveUpgrade) return pendingInteractiveUpgrade;
+  pendingInteractiveUpgrade = silentRequest.then(
+    (token) => token || startTokenRequest(true),
+    () => startTokenRequest(true)
+  );
+  pendingInteractiveUpgrade.then(
+    () => { pendingInteractiveUpgrade = null; },
+    () => { pendingInteractiveUpgrade = null; }
+  );
+  return pendingInteractiveUpgrade;
+}
+
+async function getToken(interactive = true) {
+  if (tokenCache) return tokenCache;
+  if (pendingInteractiveUpgrade) return pendingInteractiveUpgrade;
+  if (!pendingTokenRequest) return startTokenRequest(interactive);
+  if (!interactive || pendingTokenRequest.interactive) return pendingTokenRequest.promise;
+  return upgradeToInteractiveToken(pendingTokenRequest.promise);
 }
 async function clearToken() {
   const token = tokenCache;

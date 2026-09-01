@@ -13,6 +13,12 @@ import {
 } from './ui.js';
 import { createDnd, chromeMoveIndex, isSamePlace, wouldCycle } from './tree.js';
 import { t } from './i18n.js';
+import {
+  initialBookmarkPageSize,
+  clampBookmarkPageSize,
+  nextBookmarkPageSize,
+  reconcileBookmarkPageSizes,
+} from './bookmark-pagination.js';
 
 export function createBookmarksTab(ctx) {
   let loaded = false;
@@ -21,7 +27,10 @@ export function createBookmarksTab(ctx) {
   const permanent = new Set(); // 根节点(0)的直接子节点：书签栏 / 其他书签等，不可拖拽/删除
   const expanded = new Set();
   const selectedBookmarks = new Set();
+  const loadedChildCounts = new Map();
+  const loadingMoreFolders = new Set();
   let selectedBookmarkAnchor = null;
+  let loadObserver = null;
 
   const scroll = ctx.scrollEl;
 
@@ -47,19 +56,48 @@ export function createBookmarksTab(ctx) {
 
   // ———— 数据 ————
 
-  async function reload() {
+  async function reload({ revealNodeId = null, renderTree = true } = {}) {
     const [root] = await chrome.bookmarks.getTree();
     rootTree = root;
     byId.clear();
+    permanent.clear();
     walk(root);
+    reconcileTreeState();
+    if (revealNodeId) revealNode(revealNodeId);
     for (const id of [...selectedBookmarks]) if (!byId.has(id)) selectedBookmarks.delete(id);
-    render();
+    if (renderTree) render();
   }
 
   function walk(node) {
     byId.set(node.id, node);
     if (node.parentId === '0') permanent.add(node.id);
     (node.children || []).forEach(walk);
+  }
+
+  function reconcileTreeState() {
+    const folderTotals = new Map();
+    for (const node of byId.values()) {
+      if (!node.url) folderTotals.set(node.id, (node.children || []).length);
+    }
+    for (const id of [...expanded]) if (!folderTotals.has(id)) expanded.delete(id);
+    for (const id of [...loadingMoreFolders]) if (!folderTotals.has(id)) loadingMoreFolders.delete(id);
+    const reconciled = reconcileBookmarkPageSizes(loadedChildCounts, folderTotals);
+    loadedChildCounts.clear();
+    for (const [folderId, count] of reconciled) loadedChildCounts.set(folderId, count);
+  }
+
+  function revealNode(nodeId) {
+    const node = byId.get(nodeId);
+    const parent = node?.parentId ? byId.get(node.parentId) : null;
+    if (!node || !parent || parent.url) return;
+    const total = (parent.children || []).length;
+    const index = parent.children.findIndex((child) => child.id === node.id);
+    if (index < 0) return;
+    expanded.add(parent.id);
+    const current = loadedChildCounts.has(parent.id)
+      ? clampBookmarkPageSize(loadedChildCounts.get(parent.id), total)
+      : initialBookmarkPageSize(total);
+    loadedChildCounts.set(parent.id, Math.min(total, Math.max(current, index + 1)));
   }
 
   function isPermanent(id) {
@@ -87,24 +125,87 @@ export function createBookmarksTab(ctx) {
 
   // ———— 渲染 ————
 
-  function render() {
+  function render({ focusId = null, scrollTop = scroll.scrollTop } = {}) {
+    loadObserver?.disconnect();
+    loadObserver = null;
+    const sentinels = [];
     scroll.replaceChildren();
     if (!rootTree) return;
-    for (const child of rootTree.children || []) appendTreeNode(scroll, child, 0);
+    for (const child of rootTree.children || []) appendTreeNode(scroll, child, 0, sentinels);
+    scroll.scrollTop = scrollTop;
+    observeLoadSentinels(sentinels);
+    if (focusId) requestAnimationFrame(() => {
+      const safeId = CSS.escape(focusId);
+      scroll.querySelector(`.row[data-id="${safeId}"]`)?.focus({ preventScroll: true });
+    });
   }
 
-  function appendTreeNode(container, node, depth) {
+  function appendTreeNode(container, node, depth, sentinels) {
     const row = nodeRow(node, depth);
     container.append(row);
-    if (!node.url && (node.children || []).length) {
-      const isExpanded = expanded.has(node.id);
-      const childWrap = h('div', {
-        class: `folder-children bm-folder-children${isExpanded ? ' is-expanded' : ''}`,
-        dataset: { parentFolder: node.id },
-      });
-      for (const child of node.children || []) appendTreeNode(childWrap, child, depth + 1);
-      container.append(childWrap);
+    const children = node.children || [];
+    if (node.url || !children.length || !expanded.has(node.id)) return;
+
+    const childWrap = h('div', {
+      class: 'folder-children bm-folder-children is-expanded',
+      dataset: { parentFolder: node.id },
+    });
+    const visibleCount = visibleChildCount(node);
+    for (const child of children.slice(0, visibleCount)) appendTreeNode(childWrap, child, depth + 1, sentinels);
+    if (visibleCount < children.length) {
+      if (loadingMoreFolders.has(node.id)) {
+        const status = h('div', { class: 'bm-load-status', role: 'status', 'aria-live': 'polite', text: t('bookmarks.loadingMore') });
+        status.style.paddingLeft = `${22 + (depth + 1) * 14}px`;
+        childWrap.append(status);
+      } else {
+        const sentinel = h('div', { class: 'bm-load-sentinel', dataset: { parentFolder: node.id }, 'aria-hidden': 'true' });
+        childWrap.append(sentinel);
+        sentinels.push(sentinel);
+      }
     }
+    container.append(childWrap);
+  }
+
+  function visibleChildCount(node) {
+    const total = (node.children || []).length;
+    if (!loadedChildCounts.has(node.id)) loadedChildCounts.set(node.id, initialBookmarkPageSize(total));
+    const count = clampBookmarkPageSize(loadedChildCounts.get(node.id), total);
+    loadedChildCounts.set(node.id, count);
+    return count;
+  }
+
+  function observeLoadSentinels(sentinels) {
+    if (!sentinels.length || typeof IntersectionObserver !== 'function') return;
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const folderId = entry.target.dataset.parentFolder;
+        observer.unobserve(entry.target);
+        loadMore(folderId);
+      }
+    }, { root: scroll, rootMargin: '0px 0px 300px 0px', threshold: 0 });
+    loadObserver = observer;
+    for (const sentinel of sentinels) observer.observe(sentinel);
+  }
+
+  function loadMore(folderId) {
+    const node = byId.get(folderId);
+    const total = (node?.children || []).length;
+    if (!node || node.url || !expanded.has(folderId) || loadingMoreFolders.has(folderId)) return;
+    if (visibleChildCount(node) >= total) return;
+
+    const scrollTop = scroll.scrollTop;
+    loadingMoreFolders.add(folderId);
+    render({ scrollTop });
+    requestAnimationFrame(() => {
+      const latest = byId.get(folderId);
+      if (latest && !latest.url && expanded.has(folderId)) {
+        const latestTotal = (latest.children || []).length;
+        loadedChildCounts.set(folderId, nextBookmarkPageSize(visibleChildCount(latest), latestTotal));
+      }
+      loadingMoreFolders.delete(folderId);
+      render({ scrollTop });
+    });
   }
 
   function nodeRow(node, depth) {
@@ -247,15 +348,9 @@ export function createBookmarksTab(ctx) {
   }
 
   function toggleExpand(id) {
-    const next = !expanded.has(id);
-    if (next) expanded.add(id);
-    else expanded.delete(id);
-    const safeId = CSS.escape(id);
-    const childWrap = scroll.querySelector(`.bm-folder-children[data-parent-folder="${safeId}"]`);
-    const row = scroll.querySelector(`.row[data-id="${safeId}"]`);
-    childWrap?.classList.toggle('is-expanded', next);
-    row?.setAttribute('aria-expanded', String(next));
-    row?.querySelector('.caret')?.classList.toggle('open', next);
+    if (expanded.has(id)) expanded.delete(id);
+    else expanded.add(id);
+    render({ focusId: id });
   }
 
   // ———— 增删改 ————
@@ -277,9 +372,9 @@ export function createBookmarksTab(ctx) {
     });
     if (!v) return;
     const url = normalizeUrl(v.url);
-    await chrome.bookmarks.create({ parentId, title: v.title || url, url });
+    const created = await chrome.bookmarks.create({ parentId, title: v.title || url, url });
     expanded.add(parentId);
-    await reload();
+    await reload({ revealNodeId: created.id });
     toast('已创建书签');
   }
 
@@ -290,9 +385,9 @@ export function createBookmarksTab(ctx) {
       validate: (vals) => (vals.title ? null : '名称不能为空'),
     });
     if (!v) return;
-    await chrome.bookmarks.create({ parentId, title: v.title });
+    const created = await chrome.bookmarks.create({ parentId, title: v.title });
     expanded.add(parentId);
-    await reload();
+    await reload({ revealNodeId: created.id });
     toast('已创建文件夹');
   }
 
@@ -378,7 +473,7 @@ export function createBookmarksTab(ctx) {
         modalApi.close();
         await chrome.bookmarks.move(node.id, { parentId: f.node.id });
         expanded.add(f.node.id);
-        await reload();
+        await reload({ revealNodeId: node.id });
         toast(t('bookmarks.moved', { TITLE: f.node.title || t('bookmarks.unnamed') }));
       });
       m.append(row);
@@ -426,7 +521,7 @@ export function createBookmarksTab(ctx) {
           await chrome.bookmarks.move(d.id, { parentId: t.parentId, index });
         }
       }
-      await reload();
+      await reload({ revealNodeId: d.id });
     },
   });
 
@@ -455,9 +550,9 @@ export function createBookmarksTab(ctx) {
       toast('无法读取当前页面', 'error');
       return;
     }
-    await chrome.bookmarks.create({ parentId: barId(), title: tab.title || tab.url, url: tab.url });
+    const created = await chrome.bookmarks.create({ parentId: barId(), title: tab.title || tab.url, url: tab.url });
     expanded.add(barId());
-    await reload();
+    await reload({ revealNodeId: created.id });
     toast(t('bookmarks.addedToBar'));
   }
 
@@ -478,8 +573,8 @@ export function createBookmarksTab(ctx) {
   async function ensureLoaded() {
     if (loaded) return;
     loaded = true;
-    await reload();
-    // 默认展开书签栏
+    await reload({ renderTree: false });
+    // 默认展开书签栏；每层首次仅渲染 100 个直接子项。
     if (rootTree) for (const c of rootTree.children || []) expanded.add(c.id);
     render();
   }

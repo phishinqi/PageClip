@@ -664,6 +664,9 @@
   "bookmarks_addedToBar": {
     "message": "Added to bookmarks bar"
   },
+  "bookmarks_loadingMore": {
+    "message": "Loading…"
+  },
   "settings_title": {
     "message": "PageClip Settings"
   },
@@ -855,7 +858,6 @@
   "settings_importRecovery": {
     "message": "Import recovery key"
   },
-
   "settings_viewBackups": {
     "message": "View backups"
   },
