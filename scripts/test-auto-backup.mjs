@@ -13,7 +13,7 @@ const data = {
   items: [{ id: 'i1', url: 'https://example.com', title: 'Example' }],
   folders: [{ id: 'f_uncategorized', name: '未分类', parentId: null, order: 0, system: true }],
   quickAccess: [], inbox: [], recycleBin: [],
-  settings: { cloudBackup: { autoBackupEnabled: true, autoBackupIntervalHours: 24 } },
+  settings: { cloudBackup: { autoBackupEnabled: true } },
 };
 const files = [];
 const calls = [];

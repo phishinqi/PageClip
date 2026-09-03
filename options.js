@@ -6,7 +6,7 @@ import {
 import { importBookmarksHtml } from './js/bookmark-import.js';
 import { initI18n, applyI18n, onLocaleChanged, setLocalePreference, getLocalePreference, translateText, t } from './js/i18n.js';
 import { encryptBackup, decryptBackup, createPasswordVerifier, verifyBackupPassword, getOrCreateDeviceKey, exportEncryptedRecoveryKey, importEncryptedRecoveryKey } from './js/crypto-backup.js';
-import { AUTO_BACKUP_DEFAULT_HOURS, AUTO_BACKUP_INTERVALS, connectGoogle, getConnectedAccount, signOutGoogle, uploadLatestBackup, downloadLatestBackup, downloadBackup, listBackups, getCloudBackupStatus } from './js/cloud-backup.js';
+import { connectGoogle, signOutGoogle, uploadLatestBackup, downloadLatestBackup, downloadBackup, listBackups, getCloudBackupStatus } from './js/cloud-backup.js';
 import { getCloudCardState } from './js/cloud-status.js';
 
 const root = document.getElementById('options-root');
@@ -98,36 +98,25 @@ function cloudCard() {
 function autoBackupControls() {
   const settings = data.settings?.cloudBackup || {};
   const enabled = !!settings.autoBackupEnabled;
-  const interval = AUTO_BACKUP_INTERVALS.includes(Number(settings.autoBackupIntervalHours)) ? Number(settings.autoBackupIntervalHours) : AUTO_BACKUP_DEFAULT_HOURS;
   const checkbox = h('input', { type: 'checkbox', checked: enabled });
-  const select = h('select', { class: 'auto-backup-select', disabled: !enabled, 'aria-label': t('settings.autoBackupInterval') });
-  for (const hours of AUTO_BACKUP_INTERVALS) {
-    const label = hours === 168 ? t('settings.autoBackupWeekly') : t('settings.autoBackupHours', { HOURS: hours });
-    select.append(h('option', { value: String(hours), text: label }));
-  }
-  select.value = String(interval);
-  checkbox.addEventListener('change', () => saveAutoBackupSettings(checkbox.checked, select.value, checkbox));
-  select.addEventListener('change', () => saveAutoBackupSettings(checkbox.checked, select.value, checkbox));
+  checkbox.addEventListener('change', () => saveAutoBackupSettings(checkbox.checked, checkbox));
   const last = settings.lastAutoBackupError ? t('settings.autoBackupError', { ERROR: settings.lastAutoBackupError }) : settings.lastAutoBackupAt ? t('settings.autoBackupLast', { TIME: new Date(settings.lastAutoBackupAt).toLocaleString() }) : t('settings.autoBackupNever');
   return h('div', { class: 'auto-backup-controls' },
     h('div', { class: 'auto-backup-header' }, h('strong', { text: t('settings.autoBackup') }), h('span', { class: 'desc', text: enabled ? t('settings.autoBackupEnabled') : t('settings.autoBackupDisabled') })),
     h('label', { class: 'auto-backup-toggle' }, checkbox, h('span', { text: t('settings.autoBackupToggle') })),
-    h('label', { class: 'auto-backup-interval' }, h('span', { class: 'form-label', text: t('settings.autoBackupInterval') }), select),
     h('p', { class: 'desc auto-backup-meta', text: last }),
     h('p', { class: 'desc auto-backup-note', text: t('settings.autoBackupHint') })
   );
 }
 
-async function saveAutoBackupSettings(enabled, rawInterval, checkbox) {
-  const interval = AUTO_BACKUP_INTERVALS.includes(Number(rawInterval)) ? Number(rawInterval) : AUTO_BACKUP_DEFAULT_HOURS;
+async function saveAutoBackupSettings(enabled, checkbox) {
   if (enabled && !cloudStatus.connected) {
     checkbox.checked = false;
     await connectCloud();
     if (!cloudStatus.connected) return;
   }
   try {
-    await updateSettings({ cloudBackup: { ...(data.settings?.cloudBackup || {}), autoBackupEnabled: enabled, autoBackupIntervalHours: interval, autoBackupMode: 'device-key' } });
-    await Promise.resolve(chrome.runtime.sendMessage?.({ type: 'schedule-auto-backup' })).catch(() => {});
+    await updateSettings({ cloudBackup: { ...(data.settings?.cloudBackup || {}), autoBackupEnabled: enabled, autoBackupMode: 'device-key' } });
     data = await loadData();
     cloudStatus = await getCloudBackupStatus();
     render();

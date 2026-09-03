@@ -680,7 +680,7 @@
     "message": "把收藏整理成自己的工作流"
   },
   "settings_heroHint": {
-    "message": "备份、导入、云端加密备份和回收站都集中在这里。本地数据默认只保存在当前浏览器中，云备份仅在你手动触发时上传密文。"
+    "message": "备份、导入、云端加密备份和回收站都集中在这里。本地数据默认只保存在当前浏览器中；启用自动备份后，PageClip 数据变更会上传加密密文。"
   },
   "settings_stats": {
     "message": "数据统计"
@@ -844,7 +844,7 @@
     "message": "打开快捷键设置"
   },
   "settings_localNote": {
-    "message": "数据仅保存在本机，不上传服务器；卸载扩展前请先导出 JSON 备份。"
+    "message": "数据仅保存在本机，除非你手动启动加密云备份或启用自动备份。"
   },
   "settings_cloud": {
     "message": "Google Drive 云端备份"
@@ -949,7 +949,7 @@
     "message": "自动备份"
   },
   "settings_autoBackupHint": {
-    "message": "自动备份使用本机密钥加密，不会保存备份密码；跨设备恢复需要导出并保管恢复密钥。"
+    "message": "启用后，PageClip 数据变更约 10 秒后会使用本机密钥加密并备份；连续修改会合并为一次备份。不会保存备份密码；跨设备恢复需要导出并保管恢复密钥。"
   },
   "settings_autoBackupToggle": {
     "message": "启用自动备份"
@@ -959,20 +959,6 @@
   },
   "settings_autoBackupDisabled": {
     "message": "未启用"
-  },
-  "settings_autoBackupInterval": {
-    "message": "备份周期"
-  },
-  "settings_autoBackupHours": {
-    "message": "每 $HOURS$ 小时",
-    "placeholders": {
-      "hours": {
-        "content": "$1"
-      }
-    }
-  },
-  "settings_autoBackupWeekly": {
-    "message": "每周"
   },
   "settings_autoBackupNever": {
     "message": "尚未执行自动备份"
