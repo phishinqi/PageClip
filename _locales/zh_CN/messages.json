@@ -736,6 +736,56 @@
   "settings_chooseBookmarks": {
     "message": "选择 bookmarks.html"
   },
+  "settings_bookmarkAutoImport": {
+    "message": "自动导入 Chrome 书签"
+  },
+  "settings_bookmarkAutoImportToggle": {
+    "message": "自动检测并导入新增书签"
+  },
+  "settings_bookmarkAutoImportEnabled": {
+    "message": "已启用"
+  },
+  "settings_bookmarkAutoImportDisabled": {
+    "message": "未启用"
+  },
+  "settings_bookmarkAutoImportHint": {
+    "message": "仅从 Chrome 复制到 PageClip；不会修改 Chrome。Chrome 中的删除、移动或编辑不会覆盖 PageClip 副本；全局重复网址会跳过。导入内容会包含在导出和已启用的加密云备份中。"
+  },
+  "settings_bookmarkAutoImportConfirm": {
+    "message": "启用后，PageClip 会读取 Chrome 书签并复制可用条目到 PageClip。不会修改 Chrome；Chrome 删除或编辑也不会影响已复制的 PageClip 条目。重复网址会跳过。确认启用并立即导入吗？"
+  },
+  "settings_bookmarkAutoImportNever": {
+    "message": "尚未执行自动书签导入"
+  },
+  "settings_bookmarkAutoImportLast": {
+    "message": "上次导入：$TIME$ · 新增 $ADDED$ 条 · 跳过重复 $DUPLICATES$ 条",
+    "placeholders": {
+      "time": { "content": "$1" },
+      "added": { "content": "$2" },
+      "duplicates": { "content": "$3" }
+    }
+  },
+  "settings_bookmarkAutoImportError": {
+    "message": "上次导入失败：$ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  },
+  "settings_bookmarkAutoImportRetry": {
+    "message": "立即重试"
+  },
+  "settings_bookmarkAutoImportDone": {
+    "message": "导入完成：新增 $ADDED$ 条，重复 $DUPLICATES$ 条，无效 $INVALID$ 条",
+    "placeholders": {
+      "added": { "content": "$1" },
+      "duplicates": { "content": "$2" },
+      "invalid": { "content": "$3" }
+    }
+  },
+  "settings_bookmarkAutoImportSaved": {
+    "message": "自动书签导入设置已保存"
+  },
+  "settings_bookmarkAutoImportFailed": {
+    "message": "自动书签导入失败"
+  },
   "settings_htmlCsv": {
     "message": "HTML / CSV 导入与导出"
   },

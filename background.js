@@ -8,11 +8,86 @@ import {
   isCollectableUrl,
   ensureDataInitialized,
   pruneRecycleBin,
+  loadData,
+  updateSettings,
 } from './js/store.js';
+import { mergeBrowserBookmarks } from './js/bookmark-import.js';
 import { initI18n, t, getMessages } from './js/i18n.js';
 import { runAutomaticBackup, AUTO_BACKUP_ALARM, AUTO_BACKUP_DEFAULT_HOURS, AUTO_BACKUP_INTERVALS } from './js/cloud-backup.js';
 
 const DEFAULT_TITLE = '打开 PageClip 侧边栏';
+const AUTO_BOOKMARK_IMPORT_ALARM = 'pageclip-auto-bookmark-import';
+const BOOKMARK_IMPORT_RECOVERY_ALARM = 'pageclip-bookmark-import-recovery';
+const BOOKMARK_IMPORT_DEBOUNCE_MINUTES = 1;
+const BOOKMARK_IMPORT_RECOVERY_MINUTES = 24 * 60;
+let bookmarkImportRunning = null;
+
+function bookmarkImportSettings(data) {
+  return data.settings?.bookmarkAutoImport || {};
+}
+
+async function saveBookmarkImportSettings(patch) {
+  const data = await loadData();
+  await updateSettings({ bookmarkAutoImport: { ...bookmarkImportSettings(data), ...patch } });
+}
+
+async function configureBookmarkImportSchedule() {
+  if (!chrome.alarms?.create) return false;
+  const settings = bookmarkImportSettings(await loadData());
+  await Promise.resolve(chrome.alarms.clear?.(AUTO_BOOKMARK_IMPORT_ALARM)).catch(() => {});
+  await Promise.resolve(chrome.alarms.clear?.(BOOKMARK_IMPORT_RECOVERY_ALARM)).catch(() => {});
+  if (!settings.enabled) return false;
+  chrome.alarms.create(BOOKMARK_IMPORT_RECOVERY_ALARM, { delayInMinutes: BOOKMARK_IMPORT_RECOVERY_MINUTES, periodInMinutes: BOOKMARK_IMPORT_RECOVERY_MINUTES });
+  if (!settings.lastSuccessAt || Date.now() - Number(settings.lastSuccessAt) >= BOOKMARK_IMPORT_RECOVERY_MINUTES * 60 * 1000) {
+    chrome.alarms.create(AUTO_BOOKMARK_IMPORT_ALARM, { delayInMinutes: BOOKMARK_IMPORT_DEBOUNCE_MINUTES });
+  }
+  return true;
+}
+
+async function scheduleAutomaticBookmarkImport(trigger = 'event', immediate = false) {
+  const settings = bookmarkImportSettings(await loadData());
+  if (!settings.enabled && trigger !== 'manual') return false;
+  if (!chrome.alarms?.create) return false;
+  chrome.alarms.create(AUTO_BOOKMARK_IMPORT_ALARM, { delayInMinutes: immediate ? 0.5 : BOOKMARK_IMPORT_DEBOUNCE_MINUTES });
+  return true;
+}
+
+async function runBookmarkImport(trigger = 'manual') {
+  if (bookmarkImportRunning) return bookmarkImportRunning;
+  bookmarkImportRunning = (async () => {
+    const settings = bookmarkImportSettings(await loadData());
+    if (!settings.enabled && trigger !== 'manual') return { skipped: true, reason: 'disabled' };
+    await saveBookmarkImportSettings({ lastAttemptAt: Date.now(), lastError: null });
+    try {
+      const tree = await chrome.bookmarks.getTree();
+      const latest = bookmarkImportSettings(await loadData());
+      if (!latest.enabled && trigger !== 'manual') return { skipped: true, reason: 'disabled' };
+      const result = await mergeBrowserBookmarks(tree);
+      const now = Date.now();
+      await saveBookmarkImportSettings({
+        initialImportCompleted: latest.enabled ? true : latest.initialImportCompleted === true,
+        lastSuccessAt: now,
+        lastResult: { ...result, trigger, timestamp: now },
+        lastError: null,
+      });
+      return { skipped: false, ...result };
+    } catch (error) {
+      const message = error?.message || String(error);
+      await saveBookmarkImportSettings({ lastError: message }).catch(() => {});
+      throw error;
+    }
+  })();
+  try { return await bookmarkImportRunning; } finally { bookmarkImportRunning = null; }
+}
+
+async function enableAutomaticBookmarkImport(enabled) {
+  const data = await loadData();
+  await updateSettings({ bookmarkAutoImport: { ...bookmarkImportSettings(data), enabled: !!enabled } });
+  await configureBookmarkImportSchedule();
+  if (enabled) return runBookmarkImport('initial');
+  return { skipped: true, reason: 'disabled' };
+}
+
 
 async function configureSidePanel() {
   const api = globalThis.chrome?.sidePanel;
@@ -89,6 +164,7 @@ chrome.runtime.onInstalled.addListener(() => {
   ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
   initI18n().catch(() => {});
   scheduleAutomaticBackup().catch(() => {});
+  configureBookmarkImportSchedule().catch(() => {});
   chrome.alarms?.create?.('pageclip-prune-recycle', { periodInMinutes: 24 * 60 });
   createMenus().catch(() => {});
 });
@@ -97,6 +173,7 @@ chrome.runtime.onStartup.addListener(() => {
   configureSidePanel().catch(() => {});
   ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
   scheduleAutomaticBackup().catch(() => {});
+  configureBookmarkImportSchedule().catch(() => {});
   chrome.alarms?.create?.('pageclip-prune-recycle', { periodInMinutes: 24 * 60 });
   createMenus().catch(() => {});
 });
@@ -104,7 +181,13 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms?.onAlarm?.addListener((alarm) => {
   if (alarm.name === 'pageclip-prune-recycle') pruneRecycleBin().catch(() => {});
   if (alarm.name === AUTO_BACKUP_ALARM) runAutomaticBackup().catch(() => {});
+  if (alarm.name === AUTO_BOOKMARK_IMPORT_ALARM) runBookmarkImport('event').catch(() => {});
+  if (alarm.name === BOOKMARK_IMPORT_RECOVERY_ALARM) runBookmarkImport('recovery').catch(() => {});
 });
+
+for (const eventName of ['onCreated', 'onChanged', 'onMoved', 'onChildrenReordered', 'onImportEnded']) {
+  chrome.bookmarks?.[eventName]?.addListener(() => scheduleAutomaticBookmarkImport('event').catch(() => {}));
+}
 
 chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
   try {
@@ -143,13 +226,19 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const oldCloud = changes.bc_data.oldValue?.settings?.cloudBackup || {};
   const newCloud = changes.bc_data.newValue?.settings?.cloudBackup || {};
   if (oldCloud.autoBackupEnabled !== newCloud.autoBackupEnabled || oldCloud.autoBackupIntervalHours !== newCloud.autoBackupIntervalHours) scheduleAutomaticBackup().catch(() => {});
+  const oldBookmarkImport = changes.bc_data.oldValue?.settings?.bookmarkAutoImport || {};
+  const newBookmarkImport = changes.bc_data.newValue?.settings?.bookmarkAutoImport || {};
+  if (oldBookmarkImport.enabled !== newBookmarkImport.enabled) configureBookmarkImportSchedule().catch(() => {});
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message?.type || !['capture-current', 'capture-quick', 'capture-inbox', 'sync-reading', 'open-manager', 'open-settings', 'get-i18n-messages', 'schedule-auto-backup'].includes(message.type)) return false;
+  if (!message?.type || !['capture-current', 'capture-quick', 'capture-inbox', 'sync-reading', 'open-manager', 'open-settings', 'get-i18n-messages', 'schedule-auto-backup', 'run-bookmark-import', 'set-bookmark-auto-import', 'get-bookmark-import-status'].includes(message.type)) return false;
   (async () => {
     if (message.type === 'get-i18n-messages') return { ok: true, locale: message.locale, messages: getMessages(message.locale) };
     if (message.type === 'schedule-auto-backup') return { ok: true, scheduled: await scheduleAutomaticBackup() };
+    if (message.type === 'run-bookmark-import') return { ok: true, result: await runBookmarkImport('manual') };
+    if (message.type === 'set-bookmark-auto-import') return { ok: true, result: await enableAutomaticBookmarkImport(message.enabled === true) };
+    if (message.type === 'get-bookmark-import-status') return { ok: true, status: bookmarkImportSettings(await loadData()) };
     const payload = message.payload || sender.tab || await getCurrentTab();
     if (message.type === 'open-manager' || message.type === 'open-settings') {
       await openFallbackPage(message.type === 'open-settings');

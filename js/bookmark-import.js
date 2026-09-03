@@ -1,7 +1,12 @@
 // 浏览器书签导入：只读取并复制到 PageClip，不修改 Chrome 原生书签。
 import { genId, isCollectableUrl, mutate, UNCATEGORIZED_ID } from './store.js';
 
-function flattenTree(tree) {
+function pathKey(path) {
+  // JSON 编码保留数组边界，避免标题包含 " / " 时与其他层级碰撞。
+  return JSON.stringify(path);
+}
+
+export function flattenBrowserBookmarkTree(tree) {
   const roots = Array.isArray(tree) ? tree : [tree];
   const folders = [];
   const items = [];
@@ -21,55 +26,11 @@ function flattenTree(tree) {
       });
       return;
     }
-    const folder = { sourceId: String(node.id || genId('source')), name, path, children: [] };
-    folders.push(folder);
+    folders.push({ sourceId: String(node.id || genId('source')), name, path });
     for (const child of node.children || []) walk(child, path);
   };
   roots.forEach((root) => walk(root));
   return { folders, items };
-}
-
-function importFlatData(flat, mode = 'merge') {
-  return mutate((data) => {
-    if (mode === 'replace') {
-      data.folders = data.folders.filter((folder) => folder.system);
-      data.items = [];
-    }
-    const folderMap = new Map();
-    const existingByPath = new Map();
-    for (const folder of data.folders) {
-      const path = folderPath(data.folders, folder.id);
-      existingByPath.set(path, folder.id);
-    }
-    let foldersAdded = 0;
-    for (const folder of flat.folders) {
-      const pathKey = folder.path.join(' / ');
-      if (existingByPath.has(pathKey)) {
-        folderMap.set(pathKey, existingByPath.get(pathKey));
-        continue;
-      }
-      const parentPath = folder.path.slice(0, -1).join(' / ');
-      const parentId = parentPath ? folderMap.get(parentPath) || UNCATEGORIZED_ID : null;
-      const created = { id: genId('f'), name: folder.name, parentId, order: data.folders.filter((item) => item.parentId === parentId).length, createdAt: Date.now(), imported: true };
-      data.folders.push(created);
-      folderMap.set(pathKey, created.id);
-      existingByPath.set(pathKey, created.id);
-      foldersAdded++;
-    }
-    const existingUrls = new Set(data.items.map((item) => item.url));
-    let itemsAdded = 0;
-    let duplicatesSkipped = 0;
-    let invalidSkipped = 0;
-    for (const source of flat.items) {
-      if (!source.url || !isCollectableUrl(source.url)) { invalidSkipped++; continue; }
-      if (existingUrls.has(source.url)) { duplicatesSkipped++; continue; }
-      const folderId = source.folderPath.length ? folderMap.get(source.folderPath.join(' / ')) || UNCATEGORIZED_ID : UNCATEGORIZED_ID;
-      data.items.push({ id: genId('i'), url: source.url.slice(0, 2048), title: source.title.slice(0, 500), folderId, tags: [], note: '', createdAt: source.createdAt, updatedAt: source.createdAt, pinned: false, order: data.items.length });
-      existingUrls.add(source.url);
-      itemsAdded++;
-    }
-    return { foldersAdded, itemsAdded, duplicatesSkipped, invalidSkipped, mode };
-  });
 }
 
 function folderPath(folders, id) {
@@ -81,11 +42,81 @@ function folderPath(folders, id) {
     parts.unshift(current.name);
     current = current.parentId ? byId.get(current.parentId) : null;
   }
-  return parts.join(' / ');
+  return parts;
+}
+
+async function assertStorageCapacity(data) {
+  const storage = globalThis.chrome?.storage?.local;
+  const quota = Number(storage?.QUOTA_BYTES);
+  if (!Number.isFinite(quota) || quota <= 0) return;
+  const encoded = new TextEncoder().encode(JSON.stringify(data)).byteLength;
+  let current = 0;
+  try { current = Number(await storage.getBytesInUse?.()) || 0; } catch {}
+  // bc_data is normally the only sizable value. Preserve a small buffer for other keys.
+  if (Math.max(encoded, current) > quota) {
+    throw new Error('PageClip 本地存储空间不足，无法导入更多 Chrome 书签。请导出或删除部分数据后重试。');
+  }
+}
+
+async function importFlatData(flat, mode = 'merge') {
+  if (mode !== 'merge' && mode !== 'replace') throw new Error('不支持的书签导入模式');
+  return mutate(async (data) => {
+    if (mode === 'replace') {
+      data.folders = data.folders.filter((folder) => folder.system);
+      data.items = [];
+    }
+    const folderMap = new Map();
+    const existingByPath = new Map();
+    for (const folder of data.folders) existingByPath.set(pathKey(folderPath(data.folders, folder.id)), folder.id);
+
+    let foldersAdded = 0;
+    for (const folder of flat.folders) {
+      const key = pathKey(folder.path);
+      if (existingByPath.has(key)) {
+        folderMap.set(key, existingByPath.get(key));
+        continue;
+      }
+      const parentPath = folder.path.slice(0, -1);
+      const parentId = parentPath.length ? folderMap.get(pathKey(parentPath)) || UNCATEGORIZED_ID : null;
+      const created = {
+        id: genId('f'), name: folder.name, parentId,
+        order: data.folders.filter((item) => item.parentId === parentId).length,
+        createdAt: Date.now(), imported: true,
+      };
+      data.folders.push(created);
+      folderMap.set(key, created.id);
+      existingByPath.set(key, created.id);
+      foldersAdded++;
+    }
+
+    const existingUrls = new Set(data.items.map((item) => item.url));
+    let itemsAdded = 0;
+    let duplicatesSkipped = 0;
+    let invalidSkipped = 0;
+    for (const source of flat.items) {
+      if (!source.url || !isCollectableUrl(source.url)) { invalidSkipped++; continue; }
+      if (existingUrls.has(source.url)) { duplicatesSkipped++; continue; }
+      const folderId = source.folderPath.length ? folderMap.get(pathKey(source.folderPath)) || UNCATEGORIZED_ID : UNCATEGORIZED_ID;
+      data.items.push({
+        id: genId('i'), url: source.url.slice(0, 2048), title: source.title.slice(0, 500), folderId,
+        tags: [], note: '', createdAt: source.createdAt, updatedAt: source.createdAt,
+        pinned: false, order: data.items.length,
+      });
+      existingUrls.add(source.url);
+      itemsAdded++;
+    }
+    await assertStorageCapacity(data);
+    return { foldersAdded, itemsAdded, duplicatesSkipped, invalidSkipped, mode };
+  });
 }
 
 export async function importBrowserBookmarks(tree, mode = 'merge') {
-  return importFlatData(flattenTree(tree), mode);
+  return importFlatData(flattenBrowserBookmarkTree(tree), mode);
+}
+
+// 自动导入只能走合并路径，避免任何 PageClip 数据被 Chrome 来源覆盖。
+export async function mergeBrowserBookmarks(tree) {
+  return importFlatData(flattenBrowserBookmarkTree(tree), 'merge');
 }
 
 export function parseBookmarksHtml(html) {

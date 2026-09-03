@@ -7,7 +7,13 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Release package: release/PageClip-v1.6.8.zip
+- Last Web Store package: release/PageClip-v1.6.8.zip
+
+## 1.6.9 release notes
+
+- Added opt-in automatic Chrome bookmark import. It copies new eligible Chrome bookmarks into PageClip without modifying Chrome or deleting/overwriting PageClip copies.
+- Coalesced bookmark-change bursts and added recovery scheduling so large Chrome bookmark updates import safely.
+- Serialized PageClip storage mutations across extension contexts to protect concurrent saves.
 
 ## 1.6.8 release notes
 
@@ -43,13 +49,15 @@ English: A local-first Chrome sidebar for bookmarks, quick access, Inbox, and en
 
 ## Detailed description
 
-PageClip keeps your browser workflow organized without mixing permanent bookmarks, temporary reading items, quick tab collections, and Chrome native bookmarks into one list. Save pages to a local-first collection, add folders, tags, and notes, preserve quick tab groups, use a 30-day recycle bin, manually or automatically back up the complete PageClip data set to Google Drive after client-side encryption, and browse retained backup history.
+PageClip keeps your browser workflow organized without mixing permanent bookmarks, temporary reading items, quick tab collections, and Chrome native bookmarks into one list. Save pages to a local-first collection, add folders, tags, and notes, preserve quick tab groups, optionally copy new eligible Chrome bookmarks into PageClip automatically, use a 30-day recycle bin, manually or automatically back up the complete PageClip data set to Google Drive after client-side encryption, and browse retained backup history.
+
+Automatic browser-bookmark import is opt-in and additive: PageClip reads Chrome bookmarks, adds only eligible URLs not already in PageClip, and never changes Chrome. Chrome-side deletes, moves, renames, and URL edits do not delete or overwrite PageClip copies. Copied records remain local unless the user later chooses an encrypted export or cloud backup.
 
 PageClip does not modify Chrome bookmarks when importing or restoring PageClip cloud data. Google Drive backups are encrypted before upload, and PageClip does not operate a separate application server, advertising system, or analytics tracker.
 
 ## Permission justifications
 
-- bookmarks: read and manage Chrome native bookmarks in the dedicated Chrome Bookmarks view; browser bookmark import is copy-only when importing.
+- bookmarks: read and manage Chrome native bookmarks in the dedicated Chrome Bookmarks view; manual and opt-in automatic browser-bookmark import are additive copy-only operations.
 - tabs: read the active tab or current window tab URLs and titles for collection, Inbox, and quick tab collection actions.
 - storage: store PageClip data locally in chrome.storage.local.
 - favicon: display website favicons.
@@ -62,4 +70,4 @@ PageClip does not modify Chrome bookmarks when importing or restoring PageClip c
 
 ## Data use
 
-PageClip uses data only to provide the user-requested collection, bookmark, Inbox, Reading List, local storage, and encrypted backup features. It does not sell data, use data for advertising, creditworthiness, price evaluation, or behavioral profiling.
+PageClip uses data only to provide the user-requested collection, bookmark, Inbox, Reading List, local storage, and encrypted backup features. Browser bookmarks are read only after the user invokes manual import or enables automatic import; imported copies remain local unless the user separately uses export or encrypted backup. It does not sell data, use data for advertising, creditworthiness, price evaluation, or behavioral profiling.

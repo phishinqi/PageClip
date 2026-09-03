@@ -736,6 +736,56 @@
   "settings_chooseBookmarks": {
     "message": "Choose bookmarks.html"
   },
+  "settings_bookmarkAutoImport": {
+    "message": "Automatic Chrome bookmark import"
+  },
+  "settings_bookmarkAutoImportToggle": {
+    "message": "Detect and import new bookmarks automatically"
+  },
+  "settings_bookmarkAutoImportEnabled": {
+    "message": "Enabled"
+  },
+  "settings_bookmarkAutoImportDisabled": {
+    "message": "Disabled"
+  },
+  "settings_bookmarkAutoImportHint": {
+    "message": "Copies from Chrome to PageClip only and never changes Chrome. Chrome deletions, moves, and edits do not overwrite PageClip copies; duplicate URLs anywhere in PageClip are skipped. Imported data is included in exports and any encrypted cloud backup you enable."
+  },
+  "settings_bookmarkAutoImportConfirm": {
+    "message": "PageClip will read Chrome bookmarks and copy eligible entries into PageClip. Chrome is never changed; Chrome deletions or edits will not affect copied PageClip items, and duplicate URLs are skipped. Enable and import now?"
+  },
+  "settings_bookmarkAutoImportNever": {
+    "message": "No automatic bookmark import has run yet"
+  },
+  "settings_bookmarkAutoImportLast": {
+    "message": "Last import: $TIME$ · added $ADDED$ · duplicate URLs skipped $DUPLICATES$",
+    "placeholders": {
+      "time": { "content": "$1" },
+      "added": { "content": "$2" },
+      "duplicates": { "content": "$3" }
+    }
+  },
+  "settings_bookmarkAutoImportError": {
+    "message": "Last import failed: $ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  },
+  "settings_bookmarkAutoImportRetry": {
+    "message": "Retry now"
+  },
+  "settings_bookmarkAutoImportDone": {
+    "message": "Import complete: added $ADDED$, duplicates $DUPLICATES$, invalid $INVALID$",
+    "placeholders": {
+      "added": { "content": "$1" },
+      "duplicates": { "content": "$2" },
+      "invalid": { "content": "$3" }
+    }
+  },
+  "settings_bookmarkAutoImportSaved": {
+    "message": "Automatic bookmark import settings saved"
+  },
+  "settings_bookmarkAutoImportFailed": {
+    "message": "Automatic bookmark import failed"
+  },
   "settings_htmlCsv": {
     "message": "HTML / CSV import and export"
   },
