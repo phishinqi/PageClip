@@ -6,6 +6,17 @@ export const UNCATEGORIZED_ID = 'f_uncategorized';
 const SCHEMA_VERSION = 3;
 const RECYCLE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
+// 同一扩展的不同页面 / MV3 worker 都可能同时读改写 bc_data。
+// Web Locks 跨上下文串行化；后备队列让不支持它的环境和测试仍保持顺序。
+let fallbackDataLock = Promise.resolve();
+export function withDataLock(fn) {
+  const locks = globalThis.navigator?.locks;
+  if (typeof locks?.request === 'function') return locks.request('pageclip-data', fn);
+  const next = fallbackDataLock.then(fn, fn);
+  fallbackDataLock = next.catch(() => {});
+  return next;
+}
+
 function normalizeQuickItem(raw) {
   const now = Date.now();
   if (!raw || typeof raw !== 'object') return null;
@@ -78,10 +89,11 @@ export function defaultData() {
 }
 
 export async function ensureDataInitialized() {
-  const cur = await chrome.storage.local.get(STORAGE_KEY);
-  const raw = cur[STORAGE_KEY];
-  const base = defaultData();
-  if (raw && typeof raw === 'object') {
+  return withDataLock(async () => {
+    const cur = await chrome.storage.local.get(STORAGE_KEY);
+    const raw = cur[STORAGE_KEY];
+    const base = defaultData();
+    if (raw && typeof raw === 'object') {
     // 兼容 schema 1/2：保留旧收藏、文件夹、设置；新字段逐项规范化。
     const sourceFolders = Array.isArray(raw.folders) ? raw.folders : [];
     const pendingFolders = sourceFolders.filter((folder) => folder && folder.id !== UNCATEGORIZED_ID && folder.name).slice();
@@ -123,9 +135,10 @@ export async function ensureDataInitialized() {
     const railWidth = Number(base.settings.folderRailWidth);
     base.settings.folderRailWidth = Number.isFinite(railWidth) ? Math.round(Math.min(360, Math.max(120, railWidth))) : 180;
   }
-  base.schema = SCHEMA_VERSION;
-  await chrome.storage.local.set({ [STORAGE_KEY]: base });
-  return base;
+    base.schema = SCHEMA_VERSION;
+    await chrome.storage.local.set({ [STORAGE_KEY]: base });
+    return base;
+  });
 }
 export async function loadData() {
   const cur = await chrome.storage.local.get(STORAGE_KEY);
@@ -138,10 +151,12 @@ export async function saveData(data) {
 
 // fn(data) 就地修改 data，返回值作为 mutate 的返回值
 export async function mutate(fn) {
-  const data = await loadData();
-  const ret = fn(data);
-  await saveData(data);
-  return ret;
+  return withDataLock(async () => {
+    const data = await loadData();
+    const ret = await fn(data);
+    await saveData(data);
+    return ret;
+  });
 }
 
 export function isCollectableUrl(url) {

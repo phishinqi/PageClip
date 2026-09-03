@@ -28,6 +28,9 @@ if ($hasPrivateKey) {
 & node (Join-Path $PSScriptRoot 'test-recovery-binary.mjs')
 & node (Join-Path $PSScriptRoot 'test-collection-model.mjs')
 & node (Join-Path $PSScriptRoot 'test-bookmark-pagination.mjs')
+& node (Join-Path $PSScriptRoot 'test-bookmark-import.mjs')
+& node (Join-Path $PSScriptRoot 'test-store-lock.mjs')
+& node (Join-Path $PSScriptRoot 'test-bookmark-auto-import.mjs')
 
 $sourceManifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 $version = [string]$sourceManifest.version

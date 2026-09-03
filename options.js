@@ -3,7 +3,7 @@ import {
   exportPayload, importPayload, restoreRecycleEntry, purgeRecycleEntry,
   clearRecycleBin, pruneRecycleBin, updateSettings, getCloudBackupPayload, previewCloudRestore, restoreCloudPayload,
 } from './js/store.js';
-import { importBrowserBookmarks, importBookmarksHtml } from './js/bookmark-import.js';
+import { importBookmarksHtml } from './js/bookmark-import.js';
 import { initI18n, applyI18n, onLocaleChanged, setLocalePreference, getLocalePreference, translateText, t } from './js/i18n.js';
 import { encryptBackup, decryptBackup, createPasswordVerifier, verifyBackupPassword, getOrCreateDeviceKey, exportEncryptedRecoveryKey, importEncryptedRecoveryKey } from './js/crypto-backup.js';
 import { AUTO_BACKUP_DEFAULT_HOURS, AUTO_BACKUP_INTERVALS, connectGoogle, getConnectedAccount, signOutGoogle, uploadLatestBackup, downloadLatestBackup, downloadBackup, listBackups, getCloudBackupStatus } from './js/cloud-backup.js';
@@ -47,10 +47,10 @@ function render() {
         button(t('settings.exportJson'), 'primary', exportJson),
         button(t('settings.importJson'), '', chooseJson)
       )),
-      card(t('settings.importBookmarks'), t('settings.bookmarksHint'), actions(
+      card(t('settings.importBookmarks'), t('settings.bookmarksHint'), h('div', {}, actions(
         button(t('settings.readBookmarks'), 'primary', importCurrentBookmarks),
         button(t('settings.chooseBookmarks'), '', chooseHtml)
-      )),
+      ), autoBookmarkImportControls())),
       card(t('settings.htmlCsv'), t('settings.htmlCsvHint'), exportActions()),
       card(t('settings.recycle'), t('settings.recycleHint'), recycleView(recycle)),
       card(t('settings.shortcuts'), t('settings.shortcutsHint'), h('div', {},
@@ -334,7 +334,55 @@ function downloadBinary(bytes, name, type) { const url = URL.createObjectURL(new
 
 async function exportJson() { downloadText(JSON.stringify(exportPayload(data), null, 2), 'PageClip-备份-' + dateStamp() + '.json', 'application/json'); toast('JSON 备份已导出'); }
 function chooseJson() { const input = h('input', { type: 'file', accept: '.json,application/json' }); input.addEventListener('change', async () => { const file = input.files?.[0]; if (!file) return; try { const payload = JSON.parse(await file.text()); const mode = confirm('选择“确定”替换现有 PageClip 数据；选择“取消”执行合并导入。') ? 'replace' : 'merge'; const result = await importPayload(payload, mode); data = await loadData(); render(); toast('导入完成：新增 ' + result.itemsAdded + ' 条收藏'); } catch (error) { toast(error.message || '导入失败', 'error'); } }); input.click(); }
-async function importCurrentBookmarks() { try { const tree = await chrome.bookmarks.getTree(); const result = await importBrowserBookmarks(tree, 'merge'); data = await loadData(); render(); toast('导入完成：新增 ' + result.itemsAdded + ' 条，重复 ' + result.duplicatesSkipped + ' 条，无效 ' + result.invalidSkipped + ' 条'); } catch (error) { toast(error.message || '浏览器书签导入失败', 'error'); } }
+async function importCurrentBookmarks() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'run-bookmark-import' });
+    if (!response?.ok) throw new Error(response?.message || t('settings.bookmarkAutoImportFailed'));
+    const result = response.result || {};
+    data = await loadData();
+    render();
+    toast(t('settings.bookmarkAutoImportDone', { ADDED: result.itemsAdded || 0, DUPLICATES: result.duplicatesSkipped || 0, INVALID: result.invalidSkipped || 0 }));
+  } catch (error) { toast(error.message || t('settings.bookmarkAutoImportFailed'), 'error'); }
+}
+
+function autoBookmarkImportControls() {
+  const settings = data.settings?.bookmarkAutoImport || {};
+  const enabled = !!settings.enabled;
+  const checkbox = h('input', { type: 'checkbox', checked: enabled });
+  checkbox.addEventListener('change', () => saveAutoBookmarkImportSettings(checkbox.checked, checkbox));
+  const result = settings.lastResult || {};
+  const meta = settings.lastError
+    ? t('settings.bookmarkAutoImportError', { ERROR: settings.lastError })
+    : settings.lastSuccessAt
+      ? t('settings.bookmarkAutoImportLast', { TIME: new Date(settings.lastSuccessAt).toLocaleString(), ADDED: result.itemsAdded || 0, DUPLICATES: result.duplicatesSkipped || 0 })
+      : t('settings.bookmarkAutoImportNever');
+  return h('div', { class: 'auto-bookmark-import-controls' },
+    h('div', { class: 'auto-backup-header' }, h('strong', { text: t('settings.bookmarkAutoImport') }), h('span', { class: 'desc', text: enabled ? t('settings.bookmarkAutoImportEnabled') : t('settings.bookmarkAutoImportDisabled') })),
+    h('label', { class: 'auto-backup-toggle' }, checkbox, h('span', { text: t('settings.bookmarkAutoImportToggle') })),
+    h('p', { class: 'desc auto-backup-meta', text: meta }),
+    settings.lastError ? button(t('settings.bookmarkAutoImportRetry'), '', importCurrentBookmarks) : null,
+    h('p', { class: 'desc auto-backup-note', text: t('settings.bookmarkAutoImportHint') })
+  );
+}
+
+async function saveAutoBookmarkImportSettings(enabled, checkbox) {
+  if (enabled && !confirm(t('settings.bookmarkAutoImportConfirm'))) {
+    checkbox.checked = false;
+    return;
+  }
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'set-bookmark-auto-import', enabled });
+    if (!response?.ok) throw new Error(response?.message || t('settings.bookmarkAutoImportFailed'));
+    data = await loadData();
+    render();
+    const result = response.result || {};
+    if (enabled && !result.skipped) toast(t('settings.bookmarkAutoImportDone', { ADDED: result.itemsAdded || 0, DUPLICATES: result.duplicatesSkipped || 0, INVALID: result.invalidSkipped || 0 }));
+    else toast(t('settings.bookmarkAutoImportSaved'));
+  } catch (error) {
+    checkbox.checked = !enabled;
+    toast(error.message || t('settings.bookmarkAutoImportFailed'), 'error');
+  }
+}
 function chooseHtml() { const input = h('input', { type: 'file', accept: '.html,text/html' }); input.addEventListener('change', async () => { const file = input.files?.[0]; if (!file) return; try { const result = await importBookmarksHtml(await file.text(), 'merge'); data = await loadData(); render(); toast('HTML 导入完成：新增 ' + result.itemsAdded + ' 条，重复 ' + result.duplicatesSkipped + ' 条，无效 ' + result.invalidSkipped + ' 条'); } catch (error) { toast(error.message || 'HTML 导入失败', 'error'); } }); input.click(); }
 async function exportChrome(mode) { try { const tree = await chrome.bookmarks.getTree(); if (mode === 'html') downloadText(bookmarksHtml(tree), 'Chrome-书签.html', 'text/html'); else downloadText(bookmarksCsv(tree), 'Chrome-书签.csv', 'text/csv'); toast('Chrome 书签已导出'); } catch (error) { toast(error.message || 'Chrome 书签导出失败', 'error'); } }
 function bookmarksHtml(tree) { const roots = Array.isArray(tree) ? tree : [tree]; function nodeHtml(node) { if (node.url) return '<DT><A HREF="' + esc(node.url) + '">' + esc(node.title || node.url) + '</A>\n'; const children = (node.children || []).map(nodeHtml).join(''); return '<DT><H3>' + esc(node.title || '未命名') + '</H3>\n<DL><p>\n' + children + '</DL><p>\n'; } return '<!DOCTYPE NETSCAPE-Bookmark-file-1><META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8"><TITLE>Bookmarks</TITLE><H1>Bookmarks</H1><DL><p>\n' + roots.flatMap((root) => (root.children || []).map(nodeHtml)).join('') + '</DL><p>\n'; }
