@@ -25,6 +25,7 @@ if ($hasPrivateKey) {
 & node (Join-Path $PSScriptRoot 'test-cloud-backup.mjs')
 & node (Join-Path $PSScriptRoot 'test-cloud-status.mjs')
 & node (Join-Path $PSScriptRoot 'test-auto-backup.mjs')
+& node (Join-Path $PSScriptRoot 'test-auto-sync.mjs')
 & node (Join-Path $PSScriptRoot 'test-recovery-binary.mjs')
 & node (Join-Path $PSScriptRoot 'test-collection-model.mjs')
 & node (Join-Path $PSScriptRoot 'test-bookmark-pagination.mjs')

@@ -680,7 +680,7 @@
     "message": "Turn your saved pages into a workflow"
   },
   "settings_heroHint": {
-    "message": "Backups, imports, encrypted cloud backup, and the recycle bin live here. Local data stays in this browser by default; cloud backup is always manual."
+    "message": "Backups, imports, encrypted cloud backup, and the recycle bin live here. Local data stays in this browser by default; when automatic backup is enabled, PageClip data changes upload encrypted ciphertext."
   },
   "settings_stats": {
     "message": "Data statistics"
@@ -844,7 +844,7 @@
     "message": "Open shortcut settings"
   },
   "settings_localNote": {
-    "message": "Data stays on this device unless you manually start an encrypted cloud backup."
+    "message": "Data stays on this device unless you manually start an encrypted cloud backup or enable automatic backup."
   },
   "settings_cloud": {
     "message": "Google Drive cloud backup"
@@ -949,7 +949,7 @@
     "message": "Automatic backup"
   },
   "settings_autoBackupHint": {
-    "message": "Automatic backups use the device key and never store a backup password; export and keep a recovery key for cross-device restore."
+    "message": "When enabled, PageClip data changes are encrypted with the device key and backed up after about 10 seconds; nearby changes are combined into one backup. A backup password is never stored; export and keep a recovery key for cross-device restore."
   },
   "settings_autoBackupToggle": {
     "message": "Enable automatic backup"
@@ -959,20 +959,6 @@
   },
   "settings_autoBackupDisabled": {
     "message": "Disabled"
-  },
-  "settings_autoBackupInterval": {
-    "message": "Backup interval"
-  },
-  "settings_autoBackupHours": {
-    "message": "Every $HOURS$ hours",
-    "placeholders": {
-      "hours": {
-        "content": "$1"
-      }
-    }
-  },
-  "settings_autoBackupWeekly": {
-    "message": "Weekly"
   },
   "settings_autoBackupNever": {
     "message": "No automatic backup has run yet"

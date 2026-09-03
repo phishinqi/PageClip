@@ -5,8 +5,6 @@ import { encryptBackup, getOrCreateDeviceKey } from './crypto-backup.js';
 export const BACKUP_FILE_NAME = 'PageClip-latest.enc';
 export const BACKUP_MIME = 'application/octet-stream';
 export const AUTO_BACKUP_ALARM = 'pageclip-auto-backup';
-export const AUTO_BACKUP_DEFAULT_HOURS = 24;
-export const AUTO_BACKUP_INTERVALS = [6, 12, 24, 168];
 const BACKUP_HISTORY_PREFIX = 'PageClip-backup-';
 const BACKUP_HISTORY_LIMIT = 20;
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';

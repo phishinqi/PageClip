@@ -71,10 +71,8 @@ input[type=file] { display:none; }
 .auto-backup-controls, .auto-bookmark-import-controls { display:flex; flex-direction:column; gap:9px; padding:12px; border:1px solid var(--line); border-radius:9px; background:var(--bg); }
 .auto-backup-header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .auto-backup-header .desc { margin:0; }
-.auto-backup-toggle, .auto-backup-interval { display:flex; align-items:center; gap:9px; }
+.auto-backup-toggle { display:flex; align-items:center; gap:9px; }
 .auto-backup-toggle input { accent-color:var(--accent); }
-.auto-backup-interval .form-label { min-width:72px; margin:0; }
-.auto-backup-select { min-width:150px; border:1px solid var(--line); border-radius:8px; padding:7px 9px; background:var(--card); color:var(--text); font:inherit; }
 .auto-backup-meta, .auto-backup-note, .recovery-note { margin:0 !important; }
 .backup-history-list { display:flex; flex-direction:column; gap:8px; }
 .backup-history-row { display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
