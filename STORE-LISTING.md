@@ -76,6 +76,7 @@ PageClip does not modify Chrome bookmarks when importing or restoring PageClip c
 - scripting: inject the PageClip web sidebar bridge on ordinary http/https pages.
 - identity: authenticate the user with Google for an explicitly requested cloud backup or restore.
 - identity.email: display the connected Google account in the settings page.
+- notifications: send one actionable system notification only when an enabled automatic Google Drive backup is paused because Google requires visible reauthorization. Clicking it opens PageClip Settings, where the user explicitly chooses whether to reconnect Google Drive. PageClip does not use notifications for advertising, recurring reminders, tracking, or unrelated messages.
 - readingList (optional): only after permission is granted, integrate with Chrome Reading List; PageClip Inbox remains independent.
 
 ## Data use
