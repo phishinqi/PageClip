@@ -2,6 +2,11 @@
 
 在浏览器侧边栏中浏览、搜索、**完整管理** Chrome 自带书签，同时拥有一套独立的收藏体系（标签 / 备注 / 文件夹 / 置顶 / 时间）。纯原生 JS（Manifest V3），无需构建，加载即用。
 
+## 1.6.11 更新说明
+
+- Google Drive 自动备份遇到需要重新授权时会暂停，并仅发送一条通知引导用户到设置页重新连接，避免后台反复失败或弹出意外登录窗口。
+- Brave 会在有效期内本机复用短期 Web OAuth Access Token；不会保存 Google Refresh Token 或 OAuth client secret。
+
 ## 1.6.10 更新说明
 
 - 自动备份改为数据变更驱动：用户启用后，PageClip 内容变更约 10 秒后会执行一次加密 Google Drive 备份，连续修改会合并处理。
