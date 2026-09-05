@@ -866,6 +866,23 @@
   "settings_notConnected": {
     "message": "No Google account connected"
   },
+  "settings_authorizationRequired": {
+    "message": "Google authorization needs reconnecting"
+  },
+  "settings_authorizationRequiredAccount": {
+    "message": "Previously connected: $EMAIL$. Reconnect to restore cloud actions and automatic backup.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_authorizationRequiredHint": {
+    "message": "Reconnect Google to restore cloud actions and automatic backup."
+  },
+  "settings_reconnect": {
+    "message": "Reconnect Google Drive"
+  },
   "settings_cloudFileNeedsConnection": {
     "message": "Cloud backup exists · modified $TIME$ · connect an account to restore",
     "placeholders": {
@@ -962,6 +979,15 @@
   },
   "settings_autoBackupNever": {
     "message": "No automatic backup has run yet"
+  },
+  "settings_autoBackupPaused": {
+    "message": "Automatic backup is paused: reconnect Google"
+  },
+  "notification_autoBackupPausedTitle": {
+    "message": "PageClip automatic backup is paused"
+  },
+  "notification_autoBackupPausedMessage": {
+    "message": "Google authorization needs reconnecting. Click to open Settings and resume automatic backup."
   },
   "settings_autoBackupLast": {
     "message": "Last automatic backup: $TIME$",

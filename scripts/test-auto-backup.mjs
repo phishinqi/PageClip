@@ -6,7 +6,7 @@ const source = await readFile(new URL('../js/cloud-backup.js', import.meta.url),
 const executable = source
   .replace(/^import[^;]+;\s*/gm, '')
   .replace(/^export\s+/gm, '')
-  + '\n globalThis.__backupTest = { runAutomaticBackup, listBackups, uploadLatestBackup };';
+  + '\n globalThis.__backupTest = { runAutomaticBackup, listBackups, uploadLatestBackup, getCloudBackupStatus };';
 
 const data = {
   schema: 3,
@@ -66,5 +66,51 @@ const listed = await context.__backupTest.listBackups(false);
 assert.equal(listed.length, 2);
 assert.deepEqual(calls.find((entry) => entry[0] === 'encrypt'), ['encrypt', 'device-key']);
 assert.equal(data.settings.cloudBackup.lastAutoBackupError, null);
+assert.equal(data.settings.cloudBackup.authRequired, false);
 
-console.log('Automatic backup tests passed: device-key upload and history snapshot');
+const authorizationData = {
+  ...structuredClone(data),
+  settings: { cloudBackup: { autoBackupEnabled: true, googleAccountEmail: 'stale@example.com' } },
+};
+const authorizationCalls = [];
+const authorizationContext = {
+  chrome: {
+    identity: {
+      async getAuthToken() {
+        authorizationCalls.push(['auth']);
+        throw new Error('interaction_required');
+      },
+      getRedirectURL() { return 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/'; },
+    },
+    runtime: { id: 'mnapcpmijebakicgdflohgnjmndhlneg' },
+  },
+  navigator: { userAgentData: { brands: [] }, userAgent: '' },
+  URL, URLSearchParams, TextEncoder, console, Headers, Response,
+  loadData: async () => structuredClone(authorizationData),
+  updateSettings: async (patch) => { authorizationCalls.push(['settings', patch]); authorizationData.settings = { ...authorizationData.settings, ...patch }; },
+  getCloudBackupPayload: (value) => value,
+  getOrCreateDeviceKey: async () => { authorizationCalls.push(['key']); return 'device-key'; },
+  encryptBackup: async () => { authorizationCalls.push(['encrypt']); return { format: 'pageclip-cloud-backup' }; },
+  fetch: async () => { throw new Error('Drive must not be called'); },
+};
+vm.createContext(authorizationContext);
+vm.runInContext(executable, authorizationContext, { filename: 'cloud-backup.js' });
+const paused = await authorizationContext.__backupTest.runAutomaticBackup();
+assert.equal(paused.skipped, true);
+assert.equal(paused.reason, 'authorization-required');
+assert.equal(paused.justPaused, true);
+assert.equal(authorizationData.settings.cloudBackup.authRequired, true);
+assert.equal(authorizationData.settings.cloudBackup.lastAutoBackupError, null);
+assert.equal(authorizationCalls.some((entry) => entry[0] === 'encrypt'), true);
+const pausedAgain = await authorizationContext.__backupTest.runAutomaticBackup();
+assert.equal(pausedAgain.skipped, true);
+assert.equal(pausedAgain.reason, 'authorization-required');
+assert.equal(pausedAgain.justPaused, false);
+assert.equal(authorizationCalls.filter((entry) => entry[0] === 'auth').length, 1);
+assert.equal(authorizationCalls.filter((entry) => entry[0] === 'encrypt').length, 1);
+const status = await authorizationContext.__backupTest.getCloudBackupStatus();
+assert.equal(status.connected, false);
+assert.equal(status.authorizationRequired, true);
+assert.equal(status.account.email, 'stale@example.com');
+
+console.log('Automatic backup tests passed: device-key upload, history snapshot, and authorization pause');

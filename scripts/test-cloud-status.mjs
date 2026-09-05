@@ -45,4 +45,24 @@ const { getCloudCardState } = await import('data:text/javascript,' + encodeURICo
   assert.equal(view.statusKey, 'settings.localLast');
 }
 
-console.log('Cloud status tests passed: 4 scenarios');
+{
+  const view = getCloudCardState({
+    connected: false,
+    authorizationRequired: true,
+    account: { email: 'stale@example.com' },
+    file: null,
+  });
+  assert.equal(view.connected, false);
+  assert.equal(view.authorizationRequired, true);
+  assert.equal(view.account, 'stale@example.com');
+  assert.equal(view.titleKey, 'settings.authorizationRequired');
+  assert.equal(view.statusKey, 'settings.authorizationRequiredAccount');
+}
+
+{
+  const view = getCloudCardState({ connected: false, authorizationRequired: true, account: null, file: null });
+  assert.equal(view.titleKey, 'settings.authorizationRequired');
+  assert.equal(view.statusKey, 'settings.authorizationRequiredHint');
+}
+
+console.log('Cloud status tests passed: 6 scenarios');

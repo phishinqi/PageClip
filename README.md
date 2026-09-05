@@ -2,6 +2,11 @@
 
 在浏览器侧边栏中浏览、搜索、**完整管理** Chrome 自带书签，同时拥有一套独立的收藏体系（标签 / 备注 / 文件夹 / 置顶 / 时间）。纯原生 JS（Manifest V3），无需构建，加载即用。
 
+## 1.6.11 更新说明
+
+- Google Drive 自动备份遇到需要重新授权时会暂停，并仅发送一条通知引导用户到设置页重新连接，避免后台反复失败或弹出意外登录窗口。
+- Brave 会在有效期内本机复用短期 Web OAuth Access Token；不会保存 Google Refresh Token 或 OAuth client secret。
+
 ## 1.6.10 更新说明
 
 - 自动备份改为数据变更驱动：用户启用后，PageClip 内容变更约 10 秒后会执行一次加密 Google Drive 备份，连续修改会合并处理。
@@ -99,7 +104,9 @@ Google Drive 备份在 Chrome 使用 `chrome.identity.getAuthToken()`，在 Brav
 3. 将上一步的 Extension ID 填入 **Item ID**，启用 Google Drive API，并将生成的 client ID 填入 `manifest.json` 的 `oauth2.client_id`。
 4. 修改 `manifest.json` 后，在 `chrome://extensions` 点击 PageClip 的「重新加载」，再回到设置页连接 Google。
 
-如果 Chrome 报错 `Custom URI scheme is not supported on Chrome apps` 或错误 400 `invalid_request`，先确认扩展 ID 和 Chrome Extension Client 的 Item ID。Chrome 正常、Brave 失败时，这是 Brave 的 `getAuthToken()` 兼容问题；PageClip 会回退到 Web OAuth 流程。Brave 使用的 Web OAuth Client 必须额外允许回调地址 `https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/`。
+如果 Chrome 报错 `Custom URI scheme is not supported on Chrome apps` 或错误 400 `invalid_request`，先确认扩展 ID 和 Chrome Extension Client 的 Item ID。Chrome 正常、Brave 失败时，这是 Brave 的 `getAuthToken()` 兼容问题；PageClip 会回退到 Web OAuth 流程。Brave 使用的 Web OAuth Client（与 `manifest.json` 的 Chrome Extension Client 不同）必须额外允许回调地址 `https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/`。
+
+自动备份只会在 PageClip 内容变更约 10 秒后执行，并且始终使用无交互授权；它不会也不能在后台弹出 Google 登录或同意权限页面。Brave 会在 Access Token 尚未到期时短暂地仅在本机复用它，以避免 Service Worker 重启后重复认证；PageClip 不会保存 Google Refresh Token 或 OAuth client secret。如果 Google 返回 `interaction_required`、`login_required` 或 `consent_required`，PageClip 会暂停自动备份并仅发出一条系统通知。点击通知会打开设置页；再点击「重新连接 Google Drive」并完成可见授权，最后执行一次手动备份确认成功。自动备份开关会保留，并将在下一次内容变更时恢复执行。
 
 OAuth client secret 不能放入 Chrome 扩展或提交到 GitHub；扩展内只能使用公开的 client ID。如果 secret 曾经出现在聊天、日志或仓库中，应立即在 Google Cloud 撤销并重新生成。
 

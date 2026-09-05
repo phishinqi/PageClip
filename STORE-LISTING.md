@@ -7,7 +7,12 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Last Web Store package: release/PageClip-v1.6.8.zip
+- Last Web Store package: release/PageClip-v1.6.11.zip
+
+## 1.6.11 release notes
+
+- Automatic Google Drive backups now pause gracefully when Google requires a visible reauthorization, then send one notification that opens Settings for an explicit reconnect.
+- Brave can reuse a valid short-lived local Web OAuth Access Token after a service-worker restart; PageClip never stores a Google Refresh Token or OAuth client secret.
 
 ## 1.6.10 release notes
 
