@@ -866,6 +866,23 @@
   "settings_notConnected": {
     "message": "尚未连接 Google 账号"
   },
+  "settings_authorizationRequired": {
+    "message": "Google 授权需要重新连接"
+  },
+  "settings_authorizationRequiredAccount": {
+    "message": "此前连接的账号：$EMAIL$。请重新连接后恢复云端操作和自动备份。",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_authorizationRequiredHint": {
+    "message": "请重新连接 Google 账号后恢复云端操作和自动备份。"
+  },
+  "settings_reconnect": {
+    "message": "重新连接 Google Drive"
+  },
   "settings_cloudFileNeedsConnection": {
     "message": "云端已有备份 · 修改时间 $TIME$ · 连接账号后可恢复",
     "placeholders": {
@@ -962,6 +979,15 @@
   },
   "settings_autoBackupNever": {
     "message": "尚未执行自动备份"
+  },
+  "settings_autoBackupPaused": {
+    "message": "自动备份已暂停：需要重新连接 Google"
+  },
+  "notification_autoBackupPausedTitle": {
+    "message": "PageClip 自动备份已暂停"
+  },
+  "notification_autoBackupPausedMessage": {
+    "message": "Google 授权需要重新连接。点击打开设置并恢复自动备份。"
   },
   "settings_autoBackupLast": {
     "message": "上次自动备份：$TIME$",

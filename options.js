@@ -78,29 +78,32 @@ function languageCard() {
 function cloudCard() {
   const view = getCloudCardState(cloudStatus, data.settings?.cloudBackup || {});
   const connected = view.connected;
+  const authorizationRequired = view.authorizationRequired;
   return card(t('settings.cloud'), t('settings.cloudHint'), h('div', { class: 'cloud-backup' },
     h('div', { class: 'cloud-status' }, h('strong', { text: t(view.titleKey, view.titleValues) }), h('span', { class: 'desc', text: t(view.statusKey, view.statusValues) })),
     actions(
-      connected ? null : button(t('settings.connect'), 'primary', connectCloud),
+      !connected ? button(t(authorizationRequired ? 'settings.reconnect' : 'settings.connect'), 'primary', connectCloud) : null,
       connected ? button(t('settings.manualBackup'), 'primary', runCloudBackup) : null,
       connected ? button(t('settings.manualRestore'), '', runCloudRestore) : null,
       connected ? button(t('settings.viewBackups'), '', showCloudBackups) : null,
-      connected ? button(t('settings.exportRecovery'), '', exportRecoveryKey) : null,
-      connected ? button(t('settings.importRecovery'), '', importRecoveryKey) : null,
-      connected ? button(t('settings.signOut'), 'danger', disconnectCloud) : null
+      (connected || authorizationRequired) ? button(t('settings.exportRecovery'), '', exportRecoveryKey) : null,
+      (connected || authorizationRequired) ? button(t('settings.importRecovery'), '', importRecoveryKey) : null,
+      (connected || authorizationRequired) ? button(t('settings.signOut'), 'danger', disconnectCloud) : null
     ),
-    connected ? autoBackupControls() : null,
-    connected ? h('p', { class: 'desc recovery-note', text: t('settings.recoveryBinaryNote') }) : null,
+    (connected || authorizationRequired) ? autoBackupControls(authorizationRequired) : null,
+    (connected || authorizationRequired) ? h('p', { class: 'desc recovery-note', text: t('settings.recoveryBinaryNote') }) : null,
     h('p', { class: 'desc cloud-note', text: t('settings.cloudNote') })
   ));
 }
 
-function autoBackupControls() {
+function autoBackupControls(authorizationRequired = false) {
   const settings = data.settings?.cloudBackup || {};
   const enabled = !!settings.autoBackupEnabled;
   const checkbox = h('input', { type: 'checkbox', checked: enabled });
   checkbox.addEventListener('change', () => saveAutoBackupSettings(checkbox.checked, checkbox));
-  const last = settings.lastAutoBackupError ? t('settings.autoBackupError', { ERROR: settings.lastAutoBackupError }) : settings.lastAutoBackupAt ? t('settings.autoBackupLast', { TIME: new Date(settings.lastAutoBackupAt).toLocaleString() }) : t('settings.autoBackupNever');
+  const last = authorizationRequired
+    ? t('settings.autoBackupPaused')
+    : settings.lastAutoBackupError ? t('settings.autoBackupError', { ERROR: settings.lastAutoBackupError }) : settings.lastAutoBackupAt ? t('settings.autoBackupLast', { TIME: new Date(settings.lastAutoBackupAt).toLocaleString() }) : t('settings.autoBackupNever');
   return h('div', { class: 'auto-backup-controls' },
     h('div', { class: 'auto-backup-header' }, h('strong', { text: t('settings.autoBackup') }), h('span', { class: 'desc', text: enabled ? t('settings.autoBackupEnabled') : t('settings.autoBackupDisabled') })),
     h('label', { class: 'auto-backup-toggle' }, checkbox, h('span', { text: t('settings.autoBackupToggle') })),

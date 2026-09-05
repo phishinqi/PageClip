@@ -21,6 +21,7 @@ const AUTO_BOOKMARK_IMPORT_ALARM = 'pageclip-auto-bookmark-import';
 const BOOKMARK_IMPORT_RECOVERY_ALARM = 'pageclip-bookmark-import-recovery';
 const BOOKMARK_IMPORT_DEBOUNCE_MINUTES = 1;
 const BOOKMARK_IMPORT_RECOVERY_MINUTES = 24 * 60;
+const AUTO_BACKUP_RECONNECT_NOTIFICATION = 'pageclip-auto-backup-reconnect';
 let bookmarkImportRunning = null;
 
 function bookmarkImportSettings(data) {
@@ -104,6 +105,18 @@ async function configureSidePanel() {
   }
 }
 
+async function showAutomaticBackupReconnectNotification() {
+  if (typeof chrome.notifications?.create !== 'function') return false;
+  await initI18n();
+  await Promise.resolve(chrome.notifications.create(AUTO_BACKUP_RECONNECT_NOTIFICATION, {
+    type: 'basic',
+    iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+    title: t('notification.autoBackupPausedTitle'),
+    message: t('notification.autoBackupPausedMessage'),
+  }));
+  return true;
+}
+
 async function openFallbackPage(openSettings = false) {
   const pageUrl = chrome.runtime.getURL('sidepanel.html');
   const optionsUrl = chrome.runtime.getURL('options.html');
@@ -122,7 +135,7 @@ function getCurrentTab() {
 async function scheduleAutomaticBackupAfterChange() {
   if (!chrome.alarms?.create) return false;
   const settings = (await loadData()).settings?.cloudBackup || {};
-  if (!settings.autoBackupEnabled) return false;
+  if (!settings.autoBackupEnabled || settings.authRequired) return false;
   chrome.alarms.create(AUTO_BACKUP_ALARM, { when: Date.now() + AUTO_BACKUP_DEBOUNCE_MS });
   return true;
 }
@@ -188,9 +201,20 @@ chrome.runtime.onStartup.addListener(() => {
 
 chrome.alarms?.onAlarm?.addListener((alarm) => {
   if (alarm.name === 'pageclip-prune-recycle') pruneRecycleBin().catch(() => {});
-  if (alarm.name === AUTO_BACKUP_ALARM) runAutomaticBackup().catch(() => {});
+  if (alarm.name === AUTO_BACKUP_ALARM) runAutomaticBackup().then((result) => {
+    if (result?.reason === 'authorization-required') {
+      Promise.resolve(chrome.alarms?.clear?.(AUTO_BACKUP_ALARM)).catch(() => {});
+      if (result.justPaused) showAutomaticBackupReconnectNotification().catch(() => {});
+    }
+  }).catch(() => {});
   if (alarm.name === AUTO_BOOKMARK_IMPORT_ALARM) runBookmarkImport('event').catch(() => {});
   if (alarm.name === BOOKMARK_IMPORT_RECOVERY_ALARM) runBookmarkImport('recovery').catch(() => {});
+});
+
+chrome.notifications?.onClicked?.addListener((notificationId) => {
+  if (notificationId !== AUTO_BACKUP_RECONNECT_NOTIFICATION) return;
+  Promise.resolve(chrome.notifications?.clear?.(notificationId)).catch(() => {});
+  openFallbackPage(true).catch(() => {});
 });
 
 for (const eventName of ['onCreated', 'onChanged', 'onMoved', 'onChildrenReordered', 'onImportEnded', 'onRemoved']) {
@@ -234,6 +258,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const oldCloud = changes.bc_data.oldValue?.settings?.cloudBackup || {};
   const newCloud = changes.bc_data.newValue?.settings?.cloudBackup || {};
   if (oldCloud.autoBackupEnabled && !newCloud.autoBackupEnabled) Promise.resolve(chrome.alarms?.clear?.(AUTO_BACKUP_ALARM)).catch(() => {});
+  if (oldCloud.authRequired && !newCloud.authRequired) Promise.resolve(chrome.notifications?.clear?.(AUTO_BACKUP_RECONNECT_NOTIFICATION)).catch(() => {});
   scheduleAutomaticBackupForChange(changes.bc_data).catch(() => {});
   const oldBookmarkImport = changes.bc_data.oldValue?.settings?.bookmarkAutoImport || {};
   const newBookmarkImport = changes.bc_data.newValue?.settings?.bookmarkAutoImport || {};

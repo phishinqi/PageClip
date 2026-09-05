@@ -1,13 +1,17 @@
 export function getCloudCardState(cloudStatus = {}, cloudSettings = {}) {
+  const authorizationRequired = Boolean(cloudStatus.authorizationRequired);
   const connected = Boolean(cloudStatus.connected);
-  const account = connected ? (cloudStatus.account?.email || '') : '';
+  const account = (connected || authorizationRequired) ? (cloudStatus.account?.email || '') : '';
   const file = cloudStatus.file || null;
   const localLast = cloudSettings.lastBackupAt || null;
-  const titleKey = account ? 'settings.connected' : connected ? 'settings.connectedNoAccount' : 'settings.notConnected';
-  const titleValues = account ? { EMAIL: account } : {};
+  const titleKey = authorizationRequired ? 'settings.authorizationRequired' : account ? 'settings.connected' : connected ? 'settings.connectedNoAccount' : 'settings.notConnected';
+  const titleValues = account && !authorizationRequired ? { EMAIL: account } : {};
   let statusKey = 'settings.noCloud';
   let statusValues = {};
-  if (cloudStatus.error) {
+  if (authorizationRequired) {
+    statusKey = account ? 'settings.authorizationRequiredAccount' : 'settings.authorizationRequiredHint';
+    statusValues = account ? { EMAIL: account } : {};
+  } else if (cloudStatus.error) {
     statusKey = 'settings.cloudError';
     statusValues = { ERROR: cloudStatus.error };
   } else if (file && connected) {
@@ -20,5 +24,5 @@ export function getCloudCardState(cloudStatus = {}, cloudSettings = {}) {
     statusKey = 'settings.localLast';
     statusValues = { TIME: new Date(localLast).toLocaleString() };
   }
-  return { connected, account, titleKey, titleValues, statusKey, statusValues };
+  return { connected, authorizationRequired, account, titleKey, titleValues, statusKey, statusValues };
 }
