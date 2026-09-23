@@ -30,6 +30,7 @@ if ($hasPrivateKey) {
 & node (Join-Path $PSScriptRoot 'test-collection-model.mjs')
 & node (Join-Path $PSScriptRoot 'test-bookmark-pagination.mjs')
 & node (Join-Path $PSScriptRoot 'test-bookmark-import.mjs')
+& node (Join-Path $PSScriptRoot 'test-chrome-bookmark-delete.mjs')
 & node (Join-Path $PSScriptRoot 'test-store-lock.mjs')
 & node (Join-Path $PSScriptRoot 'test-bookmark-auto-import.mjs')
 

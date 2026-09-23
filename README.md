@@ -2,7 +2,7 @@
 
 在浏览器侧边栏中浏览、搜索、**完整管理** Chrome 自带书签，同时拥有一套独立的收藏体系（标签 / 备注 / 文件夹 / 置顶 / 时间）。纯原生 JS（Manifest V3），无需构建，加载即用。
 
-## 1.6.11 更新说明
+## 1.6.12 更新说明
 
 - Google Drive 自动备份遇到需要重新授权时会暂停，并仅发送一条通知引导用户到设置页重新连接，避免后台反复失败或弹出意外登录窗口。
 - Brave 会在有效期内本机复用短期 Web OAuth Access Token；不会保存 Google Refresh Token 或 OAuth client secret。
@@ -62,7 +62,7 @@
 ## 数据与隐私
 
 - 插件收藏默认保存在本机浏览器（`chrome.storage.local`）；Google Drive 云备份支持手动触发，或在用户启用后于 PageClip 数据变更约 10 秒后自动触发，上传前使用客户端 AES-GCM 加密，云端仅保存密文；自动备份默认使用本机密钥。备份密码不保存，启用本机密钥模式时请另行保管加密恢复密钥。恢复密钥现在导出为加密二进制 `.pckey` 文件；二进制只隐藏文件结构，安全性仍由恢复密钥密码、PBKDF2 和 AES-GCM 提供。旧版 JSON 恢复密钥仍可导入。
-- 「Chrome 书签」页签的所有操作直接作用于浏览器书签，与 Chrome 同步机制一致。设置中的浏览器书签导入（手动或用户启用的自动导入）仅将可用条目复制到 PageClip，绝不反向修改 Chrome；Chrome 中的删除、移动和编辑不会删除或覆盖 PageClip 副本。重复 URL 在整个 PageClip 收藏中仅保留一条，复制后的条目会随常规 JSON 导出和已启用的加密云备份处理。
+- 「Chrome 书签」页签的所有操作直接作用于浏览器书签，与 Chrome 同步机制一致。设置中的浏览器书签导入（手动或用户启用的自动导入）会将可用条目复制到 PageClip；Chrome 中的删除、移动和编辑不会删除或覆盖 PageClip 副本，而删除通过 Chrome 导入的 PageClip 收藏时，会按保存的 Chrome 书签 ID 删除对应书签。重复 URL 在整个 PageClip 收藏中仅保留一条，复制后的条目会随常规 JSON 导出和已启用的加密云备份处理。
 
 ## 权限说明
 
@@ -93,7 +93,7 @@
 - **快捷键没反应？** 可能与其他软件 / 扩展冲突，到 `chrome://extensions/shortcuts` 重新设置。
 - **`chrome://` 等系统页能收藏吗？** 插件收藏仅支持 http/https/file 页面；这类页面按快捷键会显示红色 `!` 角标提示。
 - **重复收藏同一网址？** 不会产生重复条目，只会更新收藏时间与标题。
-- **自动导入会同步删除或修改吗？** 不会。它是设置中可选的单向添加式导入：Chrome 新增书签后 PageClip 会合并复制，Chrome 的删除、移动、重命名和改网址均不会改动 PageClip；已存在的 PageClip URL 也不会被 Chrome 覆盖。
+- **自动导入会同步删除或修改吗？** 自动导入本身不会。它是设置中可选的添加式导入：Chrome 新增书签后 PageClip 会合并复制，Chrome 的删除、移动、重命名和改网址均不会改动 PageClip；删除通过 Chrome 导入的 PageClip 收藏时，应用会按保存的 Chrome 书签 ID 删除对应书签。
 
 ## Google Drive OAuth 配置
 

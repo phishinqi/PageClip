@@ -496,7 +496,7 @@
     "message": "Cannot move into Uncategorized"
   },
   "collection_deleteFolderMessage": {
-    "message": "Delete folder “$TITLE$”? $COUNT$ collections will move to Uncategorized and subfolders will also be deleted.",
+    "message": "Delete folder “$TITLE$”? Its $COUNT$ collections and matching Chrome bookmarks will also be deleted, along with subfolders.",
     "placeholders": {
       "title": {
         "content": "$1"
@@ -507,12 +507,15 @@
     }
   },
   "collection_deleteMessage": {
-    "message": "Delete “$TITLE$”? (Chrome bookmarks are not affected)",
+    "message": "Delete “$TITLE$”? Matching Chrome bookmarks will also be deleted.",
     "placeholders": {
       "title": {
         "content": "$1"
       }
     }
+  },
+  "collection_chromeBookmarksDeleteFailed": {
+    "message": "PageClip was deleted, but some matching Chrome bookmarks could not be deleted."
   },
   "collection_moveTitle": {
     "message": "Move “$TITLE$” to…",

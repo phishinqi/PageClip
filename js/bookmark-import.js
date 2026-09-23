@@ -6,7 +6,7 @@ function pathKey(path) {
   return JSON.stringify(path);
 }
 
-export function flattenBrowserBookmarkTree(tree) {
+export function flattenBrowserBookmarkTree(tree, { includeBookmarkIds = true } = {}) {
   const roots = Array.isArray(tree) ? tree : [tree];
   const folders = [];
   const items = [];
@@ -23,6 +23,7 @@ export function flattenBrowserBookmarkTree(tree) {
         title: String(node.title || node.url).trim() || node.url,
         createdAt: Number(node.dateAdded) || Date.now(),
         folderPath: parentPath,
+        bookmarkId: includeBookmarkIds && node.id != null ? String(node.id) : null,
       });
       return;
     }
@@ -89,20 +90,29 @@ async function importFlatData(flat, mode = 'merge') {
       foldersAdded++;
     }
 
-    const existingUrls = new Set(data.items.map((item) => item.url));
+    const existingByUrl = new Map(data.items.map((item) => [item.url, item]));
     let itemsAdded = 0;
     let duplicatesSkipped = 0;
     let invalidSkipped = 0;
     for (const source of flat.items) {
       if (!source.url || !isCollectableUrl(source.url)) { invalidSkipped++; continue; }
-      if (existingUrls.has(source.url)) { duplicatesSkipped++; continue; }
+      const existing = existingByUrl.get(source.url);
+      if (existing) {
+        if (source.bookmarkId) {
+          const ids = Array.isArray(existing.chromeBookmarkIds) ? existing.chromeBookmarkIds : [];
+          if (!ids.includes(source.bookmarkId)) existing.chromeBookmarkIds = [...ids, source.bookmarkId].slice(0, 1000);
+        }
+        duplicatesSkipped++;
+        continue;
+      }
       const folderId = source.folderPath.length ? folderMap.get(pathKey(source.folderPath)) || UNCATEGORIZED_ID : UNCATEGORIZED_ID;
       data.items.push({
         id: genId('i'), url: source.url.slice(0, 2048), title: source.title.slice(0, 500), folderId,
         tags: [], note: '', createdAt: source.createdAt, updatedAt: source.createdAt,
         pinned: false, order: data.items.length,
+        chromeBookmarkIds: source.bookmarkId ? [source.bookmarkId] : [],
       });
-      existingUrls.add(source.url);
+      existingByUrl.set(source.url, data.items.at(-1));
       itemsAdded++;
     }
     await assertStorageCapacity(data);
@@ -144,5 +154,5 @@ export function parseBookmarksHtml(html) {
 }
 
 export async function importBookmarksHtml(html, mode = 'merge') {
-  return importBrowserBookmarks(parseBookmarksHtml(html), mode);
+  return importFlatData(flattenBrowserBookmarkTree(parseBookmarksHtml(html), { includeBookmarkIds: false }), mode);
 }

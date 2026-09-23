@@ -30,6 +30,7 @@ import {
 import { createDnd } from './tree.js';
 import { t } from './i18n.js';
 import { buildFolderStats, folderScope } from './collection-model.js';
+import { removeChromeBookmarksForItems } from './chrome-bookmark-sync.js';
 
 export function createCollectionTab(ctx) {
   const { state } = ctx;
@@ -656,8 +657,14 @@ export function createCollectionTab(ctx) {
     });
     if (!ok) return;
     await removeItem(item.id);
+    let bookmarkCleanupFailed = false;
+    try {
+      bookmarkCleanupFailed = (await removeChromeBookmarksForItems([item])).failed > 0;
+    } catch {
+      bookmarkCleanupFailed = true;
+    }
     await ctx.refresh();
-    toast(t('collection.deleted'));
+    toast(bookmarkCleanupFailed ? t('collection.chromeBookmarksDeleteFailed') : t('collection.deleted'), bookmarkCleanupFailed ? 'error' : 'ok');
   }
 
   function moveItemPicker(item) {
@@ -850,10 +857,17 @@ export function createCollectionTab(ctx) {
       okLabel: t('button.delete'),
     });
     if (!ok) return;
+    const removedItems = data.items.filter((item) => doomed.has(item.folderId));
     await removeFolder(id);
+    let bookmarkCleanupFailed = false;
+    try {
+      bookmarkCleanupFailed = (await removeChromeBookmarksForItems(removedItems)).failed > 0;
+    } catch {
+      bookmarkCleanupFailed = true;
+    }
     if (doomed.has(state.folderId)) state.folderId = 'all';
     await ctx.refresh();
-    toast(t('collection.deleted'));
+    toast(bookmarkCleanupFailed ? t('collection.chromeBookmarksDeleteFailed') : t('collection.deleted'), bookmarkCleanupFailed ? 'error' : 'ok');
   }
 
   function collectDescendants(data, id) {
