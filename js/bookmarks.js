@@ -30,6 +30,8 @@ export function createBookmarksTab(ctx) {
   const loadedChildCounts = new Map();
   const loadingMoreFolders = new Set();
   let selectedBookmarkAnchor = null;
+  let selectionMode = false;
+  let deleting = false;
   let loadObserver = null;
 
   const scroll = ctx.scrollEl;
@@ -54,6 +56,19 @@ export function createBookmarksTab(ctx) {
   headerButtons[2]?.setAttribute('data-i18n-text', 'bookmarks.saveCurrent');
   headerButtons[2]?.setAttribute('data-i18n-title', 'bookmarks.quickAdd');
 
+  const selectionControls = h('span', { class: 'selection-toolbar bm-selection-toolbar' });
+  const selectToggle = h('button', {
+    class: 'btn btn-ghost sm', title: t('selection.enter'),
+    onclick: () => {
+      selectionMode = !selectionMode;
+      if (!selectionMode) { selectedBookmarks.clear(); selectedBookmarkAnchor = null; }
+      syncBookmarkSelection();
+    },
+  }, icon('check', 14));
+  header.insertBefore(selectToggle, header.querySelector('.flex1'));
+  header.insertBefore(selectionControls, header.querySelector('.flex1'));
+
+
   // ———— 数据 ————
 
   async function reload({ revealNodeId = null, renderTree = true } = {}) {
@@ -66,6 +81,7 @@ export function createBookmarksTab(ctx) {
     if (revealNodeId) revealNode(revealNodeId);
     for (const id of [...selectedBookmarks]) if (!byId.has(id)) selectedBookmarks.delete(id);
     if (renderTree) render();
+    updateSelectionToolbar();
   }
 
   function walk(node) {
@@ -134,6 +150,7 @@ export function createBookmarksTab(ctx) {
     for (const child of rootTree.children || []) appendTreeNode(scroll, child, 0, sentinels);
     scroll.scrollTop = scrollTop;
     observeLoadSentinels(sentinels);
+    updateSelectionToolbar();
     if (focusId) requestAnimationFrame(() => {
       const safeId = CSS.escape(focusId);
       scroll.querySelector(`.row[data-id="${safeId}"]`)?.focus({ preventScroll: true });
@@ -328,7 +345,7 @@ export function createBookmarksTab(ctx) {
         if (!event.ctrlKey && !event.metaKey) selectedBookmarks.clear();
         rows.slice(lo, hi + 1).forEach((row) => selectedBookmarks.add(row.dataset.id));
       }
-    } else if (event.ctrlKey || event.metaKey) {
+    } else if (event.ctrlKey || event.metaKey || selectionMode) {
       if (selectedBookmarks.has(id)) selectedBookmarks.delete(id);
       else selectedBookmarks.add(id);
     } else {
@@ -345,6 +362,55 @@ export function createBookmarksTab(ctx) {
       row.classList.toggle('is-selected', selected);
       row.setAttribute('aria-pressed', String(selected));
     });
+    updateSelectionToolbar();
+  }
+
+  function updateSelectionToolbar() {
+    selectToggle.classList.toggle('active', selectionMode);
+    selectToggle.title = t(selectionMode ? 'selection.exit' : 'selection.enter');
+    selectionControls.replaceChildren();
+    if (!selectionMode && !selectedBookmarks.size) return;
+    selectionControls.append(
+      h('span', { class: 'selection-count', text: t('selection.count', { COUNT: selectedBookmarks.size }) }),
+      h('button', { class: 'text-btn', onclick: () => {
+        scroll.querySelectorAll('.row-url').forEach((row) => selectedBookmarks.add(row.dataset.id));
+        syncBookmarkSelection();
+      } }, t('selection.selectLoaded')),
+      h('button', { class: 'text-btn', onclick: () => { selectedBookmarks.clear(); selectedBookmarkAnchor = null; syncBookmarkSelection(); } }, t('button.clearShort')),
+      h('button', { class: 'text-btn selection-delete', disabled: deleting || !selectedBookmarks.size,
+        onclick: () => deleteSelectedBookmarks() }, t('selection.delete'))
+    );
+  }
+
+  async function deleteSelectedBookmarks() {
+    if (deleting) return;
+    const ids = [...selectedBookmarks].filter((id) => byId.get(id)?.url);
+    if (!ids.length) return;
+    deleting = true;
+    updateSelectionToolbar();
+    try {
+      const ok = await confirmDialog({
+        title: t('bookmarks.deleteBookmark'),
+        message: t('bookmarks.deleteSelectedConfirm', { COUNT: ids.length }),
+        okLabel: t('button.delete'),
+      });
+      if (!ok) return;
+      let failed = 0;
+      for (const id of ids) {
+        try {
+          await chrome.bookmarks.remove(id);
+          selectedBookmarks.delete(id);
+        } catch { failed++; }
+      }
+      selectedBookmarkAnchor = null;
+      await reload();
+      toast(failed ? t('bookmarks.deleteSelectedFailed', { COUNT: failed }) : t('bookmarks.deleted'), failed ? 'error' : 'ok');
+    } catch (error) {
+      toast(error.message || String(error), 'error');
+    } finally {
+      deleting = false;
+      updateSelectionToolbar();
+    }
   }
 
   function toggleExpand(id) {

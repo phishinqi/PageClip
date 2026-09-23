@@ -20,19 +20,14 @@ if ($hasPrivateKey) {
   if ($LASTEXITCODE -ne 0) { throw 'Failed to fix/verify the development manifest key' }
 }
 
-& powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'check-syntax.ps1')
-& node (Join-Path $PSScriptRoot 'test-oauth.mjs')
-& node (Join-Path $PSScriptRoot 'test-cloud-backup.mjs')
-& node (Join-Path $PSScriptRoot 'test-cloud-status.mjs')
-& node (Join-Path $PSScriptRoot 'test-auto-backup.mjs')
-& node (Join-Path $PSScriptRoot 'test-auto-sync.mjs')
-& node (Join-Path $PSScriptRoot 'test-recovery-binary.mjs')
-& node (Join-Path $PSScriptRoot 'test-collection-model.mjs')
-& node (Join-Path $PSScriptRoot 'test-bookmark-pagination.mjs')
-& node (Join-Path $PSScriptRoot 'test-bookmark-import.mjs')
-& node (Join-Path $PSScriptRoot 'test-chrome-bookmark-delete.mjs')
-& node (Join-Path $PSScriptRoot 'test-store-lock.mjs')
-& node (Join-Path $PSScriptRoot 'test-bookmark-auto-import.mjs')
+foreach ($check in @('check-syntax.ps1', 'check-i18n.ps1')) {
+  & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $check)
+  if ($LASTEXITCODE -ne 0) { throw "Release validation failed: $check" }
+}
+foreach ($test in @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter 'test-*.mjs' -File | Sort-Object Name)) {
+  & node $test.FullName
+  if ($LASTEXITCODE -ne 0) { throw "Release test failed: $($test.Name)" }
+}
 
 $sourceManifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 $version = [string]$sourceManifest.version

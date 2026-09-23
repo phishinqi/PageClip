@@ -177,6 +177,11 @@
     },
     bookmarks: {
       getTree(cb) { return dual([bmTree], cb); },
+      get(id, cb) {
+        const { node } = bmFind(String(id));
+        if (!node) throw new Error(`Bookmark not found: ${id}`);
+        return dual([node], cb);
+      },
       create(obj, cb) {
         const { node: parent } = bmFind(obj.parentId);
         if (!parent || !parent.children) throw new Error('parent not found');

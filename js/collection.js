@@ -19,7 +19,7 @@ import {
   moveItem,
   moveFolder,
   updateItem,
-  removeItem,
+  removeItems,
   setItemPinned,
   addFolder,
   renameFolder,
@@ -40,6 +40,7 @@ export function createCollectionTab(ctx) {
   const selectedItems = new Set();
   let selectionMode = false;
   let selectionAnchor = null;
+  let deleting = false;
   const virtualList = {
     entries: [],
     heights: [],
@@ -391,14 +392,15 @@ export function createCollectionTab(ctx) {
       title: selectionMode ? '退出选择模式' : '进入选择模式',
       onclick: () => {
         selectionMode = !selectionMode;
-        if (!selectionMode) selectedItems.clear();
+        if (!selectionMode) { selectedItems.clear(); selectionAnchor = null; }
         renderAll();
       },
     }, icon('check', 14));
-    const selectionToolbar = selectionMode ? h('span', { class: 'selection-toolbar' },
-      h('span', { class: 'selection-count', text: `已选 ${selectedItems.size}` }),
+    const selectionToolbar = selectionMode || selectedItems.size ? h('span', { class: 'selection-toolbar' },
+      h('span', { class: 'selection-count', text: t('selection.count', { COUNT: selectedItems.size }) }),
       h('button', { class: 'text-btn', onclick: () => selectVisible(data) }, '全选'),
-      h('button', { class: 'text-btn', onclick: () => { selectedItems.clear(); renderAll(); } }, t('button.clearShort'))
+      h('button', { class: 'text-btn', onclick: () => { selectedItems.clear(); selectionAnchor = null; renderAll(); } }, t('button.clearShort')),
+      h('button', { class: 'text-btn selection-delete', disabled: deleting || !selectedItems.size, onclick: () => deleteItems([...selectedItems]) }, t('selection.delete'))
     ) : null;
     const headerChildren = [
       h(
@@ -479,9 +481,8 @@ export function createCollectionTab(ctx) {
       el.classList.toggle('is-selected', selected);
       el.setAttribute('aria-pressed', String(selected));
     });
-    header.querySelector('.selection-count')?.replaceChildren(
-      document.createTextNode(`已选 ${selectedItems.size}`)
-    );
+    const data = ctx.getData();
+    renderHeader(data, Number(header.querySelector('.list-count')?.textContent) || 0);
   }
 
   function renderTagChips(tagMap) {
@@ -649,22 +650,41 @@ export function createCollectionTab(ctx) {
     toast(item.pinned ? t('collection.unpin') : t('collection.pin'));
   }
 
+  async function syncChromeBookmarks(items) {
+    const result = await removeChromeBookmarksForItems(items);
+    if (result.failed) throw new Error(t('collection.chromeBookmarksDeleteFailed'));
+  }
+
   async function deleteItem(item) {
-    const ok = await confirmDialog({
-      title: t('collection.deleteTitle'),
-      message: t('collection.deleteMessage', { TITLE: item.title || item.url }),
-      okLabel: t('button.delete'),
-    });
-    if (!ok) return;
-    await removeItem(item.id);
-    let bookmarkCleanupFailed = false;
+    return deleteItems([item.id]);
+  }
+
+  async function deleteItems(ids) {
+    if (deleting) return;
+    const chosen = new Set(ids);
+    const items = ctx.getData().items.filter((item) => chosen.has(item.id));
+    if (!items.length) return;
+    deleting = true;
     try {
-      bookmarkCleanupFailed = (await removeChromeBookmarksForItems([item])).failed > 0;
-    } catch {
-      bookmarkCleanupFailed = true;
+      const ok = await confirmDialog({
+        title: t('collection.deleteTitle'),
+        message: items.length === 1
+          ? t('collection.deleteMessage', { TITLE: items[0].title || items[0].url })
+          : t('collection.deleteSelectedConfirm', { COUNT: items.length }),
+        okLabel: t('button.delete'),
+      });
+      if (!ok) return;
+      await removeItems(items.map((item) => item.id), { beforeRemove: syncChromeBookmarks });
+      items.forEach((item) => selectedItems.delete(item.id));
+      selectionAnchor = null;
+      await ctx.refresh();
+      toast(t('collection.deleted'));
+    } catch (error) {
+      toast(error.message || String(error), 'error');
+    } finally {
+      deleting = false;
+      renderAll();
     }
-    await ctx.refresh();
-    toast(bookmarkCleanupFailed ? t('collection.chromeBookmarksDeleteFailed') : t('collection.deleted'), bookmarkCleanupFailed ? 'error' : 'ok');
   }
 
   function moveItemPicker(item) {
@@ -857,17 +877,14 @@ export function createCollectionTab(ctx) {
       okLabel: t('button.delete'),
     });
     if (!ok) return;
-    const removedItems = data.items.filter((item) => doomed.has(item.folderId));
-    await removeFolder(id);
-    let bookmarkCleanupFailed = false;
     try {
-      bookmarkCleanupFailed = (await removeChromeBookmarksForItems(removedItems)).failed > 0;
-    } catch {
-      bookmarkCleanupFailed = true;
+      await removeFolder(id, { beforeRemove: syncChromeBookmarks });
+      if (doomed.has(state.folderId)) state.folderId = 'all';
+      await ctx.refresh();
+      toast(t('collection.deleted'));
+    } catch (error) {
+      toast(error.message || String(error), 'error');
     }
-    if (doomed.has(state.folderId)) state.folderId = 'all';
-    await ctx.refresh();
-    toast(bookmarkCleanupFailed ? t('collection.chromeBookmarksDeleteFailed') : t('collection.deleted'), bookmarkCleanupFailed ? 'error' : 'ok');
   }
 
   function collectDescendants(data, id) {

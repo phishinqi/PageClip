@@ -348,6 +348,7 @@ body.rail-resizing * { cursor: col-resize !important; }
   flex: none;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
@@ -383,7 +384,9 @@ body.rail-resizing * { cursor: col-resize !important; }
   padding: 2px 3px;
   border-radius: 4px;
 }
-.text-btn:hover, .text-btn:focus-visible { color: var(--accent); background: var(--accent-soft); outline: none; }
+.text-btn.selection-delete { color: var(--danger); }
+.text-btn:disabled { opacity: .45; cursor: default; }
+.text-btn:hover:not(:disabled), .text-btn:focus-visible { color: var(--accent); background: var(--accent-soft); outline: none; }
 
 .seg {
   display: inline-flex;
@@ -662,12 +665,16 @@ body.rail-resizing * { cursor: col-resize !important; }
   flex: none;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 7px 10px;
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
 #view-bookmarks { flex-direction: column; }
+.bm-selection-toolbar:empty { display: none; }
+.bm-selection-toolbar { flex-wrap: wrap; }
+.bm-header .btn-ghost.active { color: var(--accent); background: var(--accent-soft); }
 /* Chrome 书签树用主列表滚动；不继承收藏文件夹栏的 2400px 展开上限。 */
 .bm-folder-children { display: none; max-height: none; opacity: 1; overflow: visible; transition: none; }
 .bm-folder-children.is-expanded { display: block; max-height: none; opacity: 1; }

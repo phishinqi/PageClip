@@ -1,31 +1,30 @@
 function normalizedUrl(url) {
-  return String(url || '').trim();
+  const value = String(url || '').trim();
+  if (!value) return '';
+  try { return new URL(value).href; } catch { return value; }
 }
 
-function normalizedBookmarkIds(item) {
-  return [...new Set((Array.isArray(item?.chromeBookmarkIds) ? item.chromeBookmarkIds : [])
-    .map((id) => String(id || '').trim())
-    .filter(Boolean))];
-}
-
+// Resolve against this browser, not IDs copied from an old import or another device.
+// Read the tree once per batch and match complete URLs (including query/fragment).
 export async function removeChromeBookmarksForItems(items, bookmarksApi = globalThis.chrome?.bookmarks) {
-  const associations = new Map();
-  for (const item of items || []) {
-    const url = normalizedUrl(item?.url);
-    if (!url) continue;
-    for (const id of normalizedBookmarkIds(item)) associations.set(id, url);
-  }
-  if (!associations.size) return { removed: 0, failed: 0 };
-  if (typeof bookmarksApi?.get !== 'function' || typeof bookmarksApi?.remove !== 'function') {
+  const urls = new Set((items || []).map((item) => normalizedUrl(item?.url)).filter(Boolean));
+  if (!urls.size) return { removed: 0, failed: 0 };
+  if (typeof bookmarksApi?.getTree !== 'function' || typeof bookmarksApi?.get !== 'function' || typeof bookmarksApi?.remove !== 'function') {
     throw new Error('Chrome 书签 API 不可用');
   }
+  const matches = new Map();
+  const walk = (node) => {
+    if (node.url && urls.has(normalizedUrl(node.url))) matches.set(node.id, normalizedUrl(node.url));
+    for (const child of node.children || []) walk(child);
+  };
+  (await bookmarksApi.getTree()).forEach(walk);
 
   let removed = 0;
   let failed = 0;
-  for (const [id, url] of associations) {
+  for (const [id, url] of matches) {
     try {
-      const result = await bookmarksApi.get(id);
-      const node = Array.isArray(result) ? result[0] : result;
+      // Do not delete a bookmark edited since the snapshot was read.
+      const [node] = await bookmarksApi.get(id);
       if (normalizedUrl(node?.url) !== url) continue;
       await bookmarksApi.remove(id);
       removed++;
