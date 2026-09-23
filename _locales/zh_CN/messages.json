@@ -496,7 +496,7 @@
     "message": "不能移入「未分类」"
   },
   "collection_deleteFolderMessage": {
-    "message": "删除文件夹「$TITLE$」？其中 $COUNT$ 个收藏将移入「未分类」，子文件夹将一并删除。",
+    "message": "删除文件夹「$TITLE$」？其中 $COUNT$ 个收藏及对应的 Chrome 书签也会删除，子文件夹将一并删除。",
     "placeholders": {
       "title": {
         "content": "$1"
@@ -507,12 +507,15 @@
     }
   },
   "collection_deleteMessage": {
-    "message": "删除「$TITLE$」？（不影响 Chrome 书签）",
+    "message": "删除「$TITLE$」？对应的 Chrome 书签也会删除。",
     "placeholders": {
       "title": {
         "content": "$1"
       }
     }
+  },
+  "collection_chromeBookmarksDeleteFailed": {
+    "message": "PageClip 已删除，但对应 Chrome 书签未能全部删除。"
   },
   "collection_moveTitle": {
     "message": "移动「$TITLE$」到…",

@@ -37,8 +37,10 @@ const first = await context.__bookmarkImport.mergeBrowserBookmarks(tree);
 assert.deepEqual(structuredClone(first), { foldersAdded: 4, itemsAdded: 1, duplicatesSkipped: 2, invalidSkipped: 1, mode: 'merge' });
 const imported = data.items.find((item) => item.url === 'https://new.example');
 assert.equal(imported.createdAt, 1234);
+assert.deepEqual(structuredClone(imported.chromeBookmarkIds), ['3', '6']);
 assert.equal(data.items.find((item) => item.id === 'existing').title, 'Keep this title');
 assert.deepEqual(data.items.find((item) => item.id === 'existing').tags, ['keep']);
+assert.deepEqual(structuredClone(data.items.find((item) => item.id === 'existing').chromeBookmarkIds), ['7']);
 assert.equal(data.folders.filter((folder) => folder.name === 'A / B').length, 1);
 assert.equal(data.folders.filter((folder) => folder.name === 'A').length, 1);
 

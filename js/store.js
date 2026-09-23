@@ -74,6 +74,11 @@ function normalizeInboxItem(raw) {
   };
 }
 
+function normalizeChromeBookmarkIds(input) {
+  const ids = Array.isArray(input) ? input : [];
+  return [...new Set(ids.map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 1000);
+}
+
 export function defaultData() {
   return {
     schema: SCHEMA_VERSION,
@@ -124,7 +129,7 @@ export async function ensureDataInitialized() {
     const validFolderIds = new Set(base.folders.map((folder) => folder.id));
     base.items = (Array.isArray(raw.items) ? raw.items : []).map((item) => {
       if (!item || !isCollectableUrl(item.url)) return null;
-      return { id: String(item.id || genId('i')), url: String(item.url).trim().slice(0, 2048), title: String(item.title || item.url).slice(0, 500), folderId: validFolderIds.has(item.folderId) ? item.folderId : UNCATEGORIZED_ID, tags: normalizeTags(item.tags), note: String(item.note || '').slice(0, 2000), createdAt: Number(item.createdAt) || Date.now(), updatedAt: Number(item.updatedAt) || Number(item.createdAt) || Date.now(), pinned: !!item.pinned, order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0 };
+      return { id: String(item.id || genId('i')), url: String(item.url).trim().slice(0, 2048), title: String(item.title || item.url).slice(0, 500), folderId: validFolderIds.has(item.folderId) ? item.folderId : UNCATEGORIZED_ID, tags: normalizeTags(item.tags), note: String(item.note || '').slice(0, 2000), createdAt: Number(item.createdAt) || Date.now(), updatedAt: Number(item.updatedAt) || Number(item.createdAt) || Date.now(), pinned: !!item.pinned, order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0, chromeBookmarkIds: normalizeChromeBookmarkIds(item.chromeBookmarkIds) };
     }).filter(Boolean);
     const quickSource = Array.isArray(raw.quickAccess) ? raw.quickAccess : (Array.isArray(raw.quickItems) ? raw.quickItems : []);
     base.quickAccess = quickSource.map(normalizeQuickItem).filter(Boolean);
@@ -212,6 +217,7 @@ export async function collectIntoStorage({ url, title, folderId = UNCATEGORIZED_
       updatedAt: now,
       pinned: false,
       order,
+      chromeBookmarkIds: [],
     };
     data.items.push(item);
     return { duplicate: false, item };
@@ -864,7 +870,7 @@ export function exportPayload(data) {
     exportedAt: new Date().toISOString(),
     folders: data.folders.map((f) => pick(f, ['id', 'name', 'parentId', 'order', 'system'])),
     items: data.items.map((it) =>
-      pick(it, ['id', 'url', 'title', 'folderId', 'tags', 'note', 'createdAt', 'updatedAt', 'pinned', 'order'])
+      pick(it, ['id', 'url', 'title', 'folderId', 'tags', 'note', 'createdAt', 'updatedAt', 'pinned', 'order', 'chromeBookmarkIds'])
     ),
     quickAccess: (data.quickAccess || []).map((item) => ({ ...item })),
     inbox: (data.inbox || []).map((item) => ({ ...item })),
@@ -889,6 +895,7 @@ function sanitizeItem(raw) {
     updatedAt: Number(raw.updatedAt) || now,
     pinned: !!raw.pinned,
     order: Number(raw.order) || 0,
+    chromeBookmarkIds: normalizeChromeBookmarkIds(raw.chromeBookmarkIds),
   };
 }
 
