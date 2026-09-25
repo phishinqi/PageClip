@@ -7,7 +7,13 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Last Web Store package: release/PageClip-v1.7.1.zip
+- Last Web Store package: release/PageClip-v1.7.2.zip
+
+## 1.7.2 release notes
+
+- Settings cards now use a consistent full-width, single-column layout. The eight overview statistics form four columns on desktop and two on narrow screens.
+- Fixed a script parsing error that left Settings blank below its heading, and restored missing Chinese and English settings labels.
+- Added settings-page syntax and translation regression coverage and explicit ES-module validation before packaging.
 
 ## 1.7.1 release notes
 

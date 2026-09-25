@@ -53,7 +53,7 @@ function render() {
         stat(stats.folders, t('settings.folders')),
         stat(countTags(data, { liveUrls: liveBookmarkUrls }).length, t('settings.tags')),
         stat(recycle.entries, t('settings.recycleEntries'))
-      )), { search: t('settings.stats') + ' ' + t('settings.statsHint'), full: true })),
+          ), { search: t('settings.stats') + ' ' + t('settings.statsHint'), full: true })),
         settingsSection('tags', t('settings.sectionTags'),
           tagManagerCard(),
           tagRulesCard()),
