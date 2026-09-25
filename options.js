@@ -2,7 +2,9 @@ import {
   ensureDataInitialized, loadData, getStats, getInboxStats, getRecycleStats,
   exportPayload, importPayload, restoreRecycleEntry, purgeRecycleEntry,
   clearRecycleBin, pruneRecycleBin, updateSettings, getCloudBackupPayload, previewCloudRestore, restoreCloudPayload,
+  renameTag, deleteTag, restoreTagSnapshot, updateTagRules, applyTagRulesToExisting,
 } from './js/store.js';
+import { bookmarkRuleEntries, cleanTag, countTags, hasActiveRules, normalizeTagRules, normalizeTags, tagKey, tagUsage, urlKey } from './js/tag-model.js';
 import { importBookmarksHtml } from './js/bookmark-import.js';
 import { initI18n, applyI18n, onLocaleChanged, setLocalePreference, getLocalePreference, translateText, t } from './js/i18n.js';
 import { encryptBackup, decryptBackup, createPasswordVerifier, verifyBackupPassword, getOrCreateDeviceKey, exportEncryptedRecoveryKey, importEncryptedRecoveryKey } from './js/crypto-backup.js';
@@ -13,6 +15,10 @@ const root = document.getElementById('options-root');
 let data = null;
 let recycleSelection = new Set();
 let cloudStatus = { connected: false, account: null, file: null };
+// 当前 Chrome 书签的网址，用来在标签统计中排除已经没有书签的网址；读取失败时为 null（不排除）。
+let liveBookmarkUrls = null;
+// 正在编辑、尚未保存的标签规则（输入框用文本表示标签）。
+let rulesDraft = null;
 
 async function init() {
   await ensureDataInitialized();
@@ -20,6 +26,7 @@ async function init() {
   data = await loadData();
   await initI18n({ root: document });
   cloudStatus = await getCloudBackupStatus();
+  await loadBookmarkUrls();
   render();
   onLocaleChanged(() => { applyI18n(document); render(); });
 }
@@ -38,7 +45,7 @@ function render() {
         stat(inbox.unread, t('settings.unread')),
         stat(inbox.read, t('settings.read')),
         stat(stats.folders, t('settings.folders')),
-        stat(stats.tags, t('settings.tags')),
+        stat(countTags(data, { liveUrls: liveBookmarkUrls }).length, t('settings.tags')),
         stat(recycle.entries, t('settings.recycleEntries'))
       )),
       languageCard(),
@@ -51,6 +58,8 @@ function render() {
         button(t('settings.readBookmarks'), 'primary', importCurrentBookmarks),
         button(t('settings.chooseBookmarks'), '', chooseHtml)
       ), autoBookmarkImportControls())),
+      tagManagerCard(),
+      tagRulesCard(),
       card(t('settings.htmlCsv'), t('settings.htmlCsvHint'), exportActions()),
       card(t('settings.recycle'), t('settings.recycleHint'), recycleView(recycle)),
       card(t('settings.shortcuts'), t('settings.shortcutsHint'), h('div', {},
@@ -240,6 +249,215 @@ function optionDialog(title, body, buttons) {
   });
 }
 
+// ———— 标签管理与标签规则 ————
+
+async function loadBookmarkUrls() {
+  try {
+    const urls = new Set();
+    const walk = (node) => {
+      if (node?.url) urls.add(urlKey(node.url));
+      for (const child of node?.children || []) walk(child);
+    };
+    (await chrome.bookmarks.getTree()).forEach(walk);
+    liveBookmarkUrls = urls;
+  } catch {
+    liveBookmarkUrls = null;
+  }
+}
+
+async function reloadAfterTagChange({ resetRules = false } = {}) {
+  data = await loadData();
+  if (resetRules) rulesDraft = null;
+  await loadBookmarkUrls();
+  render();
+}
+
+function tagManagerCard() {
+  const tags = countTags(data, { liveUrls: liveBookmarkUrls });
+  const list = h('div', { class: 'tag-manager-list' });
+  if (!tags.length) list.append(h('p', { class: 'empty', text: t('settings.tagManagerEmpty') }));
+  for (const entry of tags) {
+    list.append(h('div', { class: 'tag-manager-row' },
+      h('div', { class: 'meta' }, h('strong', { text: '#' + entry.name }), h('small', { text: t('settings.tagCount', { COUNT: entry.count }) })),
+      button(t('tags.rename'), '', () => renameTagFromSettings(entry.name)),
+      button(t('tags.merge'), '', () => mergeTagFromSettings(entry.name)),
+      button(t('tags.delete'), 'danger', () => changeTagFromSettings({ from: entry.name }))
+    ));
+  }
+  return card(t('settings.tagManager'), t('settings.tagManagerHint'), list);
+}
+
+// 改名时输入已有的标签名就是合并。
+async function renameTagFromSettings(name) {
+  const input = h('input', { type: 'text', spellcheck: 'false' });
+  input.value = name;
+  const body = h('div', { class: 'cloud-form' },
+    h('label', { class: 'form-field' }, h('span', { class: 'form-label', text: t('tags.newName') }), input),
+    p(t('tags.renameHint'))
+  );
+  const target = await optionDialog(t('tags.renameTitle', { TAG: name }), body, [
+    { label: t('button.cancel'), kind: 'ghost', cancel: true },
+    { label: t('button.confirm'), kind: 'primary', onClick: async () => {
+      const value = cleanTag(input.value);
+      if (!value) { toast(t('tags.nameRequired'), 'error'); return false; }
+      if (value === name) { toast(t('tags.sameName'), 'error'); return false; }
+      return value;
+    } },
+  ]);
+  if (!target) return;
+  const existing = countTags(data).find((entry) => tagKey(entry.name) === tagKey(target) && tagKey(entry.name) !== tagKey(name));
+  await changeTagFromSettings({ from: name, to: existing ? existing.name : target, merge: !!existing });
+}
+
+async function mergeTagFromSettings(name) {
+  const others = countTags(data, { liveUrls: liveBookmarkUrls }).filter((entry) => tagKey(entry.name) !== tagKey(name));
+  if (!others.length) { toast(t('tags.noOtherTags'), 'error'); return; }
+  const select = h('select', { class: 'locale-select' });
+  for (const entry of others) select.append(h('option', { value: entry.name, text: '#' + entry.name + ' · ' + entry.count }));
+  const target = await optionDialog(t('tags.mergeTitle', { TAG: name }), h('div', { class: 'cloud-form' }, select), [
+    { label: t('button.cancel'), kind: 'ghost', cancel: true },
+    { label: t('button.confirm'), kind: 'primary', onClick: async () => select.value },
+  ]);
+  if (!target) return;
+  await changeTagFromSettings({ from: name, to: target, merge: true });
+}
+
+// to 为空表示删除。执行前确认影响范围，完成后提供撤销。
+async function changeTagFromSettings({ from, to = null, merge = false }) {
+  const usage = tagUsage(data, from, { liveUrls: liveBookmarkUrls });
+  const values = { FROM: from, TO: to, TAG: from, COUNT: usage.count, RULES: usage.rules };
+  const message = !to ? t('tags.confirmDelete', values) : t(merge ? 'tags.confirmMerge' : 'tags.confirmRename', values);
+  const ok = await optionDialog(t('tags.globalTitle'), p(message), [
+    { label: t('button.cancel'), kind: 'ghost', cancel: true },
+    { label: to ? t('button.confirm') : t('tags.delete'), kind: to ? 'primary' : 'danger', onClick: async () => true },
+  ]);
+  if (!ok) return;
+  try {
+    const result = to ? await renameTag(from, to) : await deleteTag(from);
+    await reloadAfterTagChange({ resetRules: result.rulesChanged > 0 });
+    const done = !to ? t('tags.deleted', { TAG: from }) : t(merge ? 'tags.merged' : 'tags.renamed', { TAG: to });
+    toastAction(done, t('tags.undo'), () => undoTagChange(result.snapshot));
+  } catch (error) { toast(error.message || String(error), 'error'); }
+}
+
+async function undoTagChange(snapshot) {
+  try {
+    await restoreTagSnapshot(snapshot);
+    await reloadAfterTagChange({ resetRules: !!snapshot?.rules });
+    toast(t('tags.undone'));
+  } catch (error) { toast(error.message || String(error), 'error'); }
+}
+
+function rulesToDraft(rules) {
+  return {
+    autoApply: rules.autoApply,
+    folder: rules.folder,
+    domains: rules.domains.map((rule) => ({ value: rule.domain, tags: rule.tags.join(', ') })),
+    keywords: rules.keywords.map((rule) => ({ value: rule.keyword, tags: rule.tags.join(', ') })),
+  };
+}
+
+function draftToRules(draft) {
+  return {
+    autoApply: draft.autoApply,
+    folder: draft.folder,
+    domains: draft.domains.map((rule) => ({ domain: rule.value, tags: normalizeTags(rule.tags) })),
+    keywords: draft.keywords.map((rule) => ({ keyword: rule.value, tags: normalizeTags(rule.tags) })),
+  };
+}
+
+function savedRules() {
+  return normalizeTagRules(data.settings?.tagRules);
+}
+
+function rulesDirty() {
+  return !!rulesDraft && JSON.stringify(rulesDraft) !== JSON.stringify(rulesToDraft(savedRules()));
+}
+
+function tagRulesCard() {
+  if (!rulesDraft) rulesDraft = rulesToDraft(savedRules());
+  const toggle = (key, label) => {
+    const checkbox = h('input', { type: 'checkbox', checked: rulesDraft[key] });
+    checkbox.addEventListener('change', () => { rulesDraft[key] = checkbox.checked; });
+    return h('label', { class: 'auto-backup-toggle' }, checkbox, h('span', { text: label }));
+  };
+  return card(t('settings.tagRules'), t('settings.tagRulesHint'), h('div', { class: 'tag-rules' },
+    toggle('autoApply', t('settings.tagRulesAuto')),
+    toggle('folder', t('settings.tagRulesFolder')),
+    h('p', { class: 'desc tag-rules-note', text: t('settings.tagRulesFolderHint') }),
+    ruleSection('domains', t('settings.tagRulesDomains'), t('settings.tagRulesDomainsHint'), t('settings.tagRuleDomainPlaceholder')),
+    ruleSection('keywords', t('settings.tagRulesKeywords'), t('settings.tagRulesKeywordsHint'), t('settings.tagRuleKeywordPlaceholder')),
+    actions(
+      button(t('settings.tagRulesSave'), 'primary', saveRules),
+      button(t('settings.tagRulesApply'), '', applyRulesNow)
+    )
+  ));
+}
+
+function ruleSection(kind, title, hint, placeholder) {
+  const rows = h('div', { class: 'tag-rule-rows' });
+  rulesDraft[kind].forEach((rule, index) => {
+    const valueInput = h('input', { type: 'text', placeholder, spellcheck: 'false', 'aria-label': placeholder });
+    valueInput.value = rule.value;
+    valueInput.addEventListener('input', () => { rule.value = valueInput.value; });
+    const tagsInput = h('input', { type: 'text', placeholder: t('settings.tagRuleTagsPlaceholder'), spellcheck: 'false', 'aria-label': t('settings.tagRuleTagsPlaceholder') });
+    tagsInput.value = rule.tags;
+    tagsInput.addEventListener('input', () => { rule.tags = tagsInput.value; });
+    rows.append(h('div', { class: 'tag-rule-row' },
+      valueInput,
+      h('span', { class: 'tag-rule-arrow', text: '→' }),
+      tagsInput,
+      button(t('button.delete'), 'danger', () => { rulesDraft[kind].splice(index, 1); render(); })
+    ));
+  });
+  return h('div', { class: 'tag-rule-section' },
+    h('strong', { text: title }),
+    h('p', { class: 'desc', text: hint }),
+    rows,
+    button(t('settings.tagRuleAdd'), '', () => { rulesDraft[kind].push({ value: '', tags: '' }); render(); })
+  );
+}
+
+async function saveRules() {
+  const rules = draftToRules(rulesDraft);
+  const filled = [...rulesDraft.domains, ...rulesDraft.keywords].filter((rule) => rule.value.trim() || rule.tags.trim()).length;
+  const normalized = normalizeTagRules(rules);
+  const ignored = filled - normalized.domains.length - normalized.keywords.length;
+  try {
+    await updateTagRules(rules);
+    data = await loadData();
+    rulesDraft = null;
+    render();
+    toast(ignored > 0 ? t('settings.tagRulesSaved') + ' · ' + t('settings.tagRulesIgnored', { COUNT: ignored }) : t('settings.tagRulesSaved'));
+  } catch (error) { toast(error.message || String(error), 'error'); }
+}
+
+// 手动对现有书签（收藏和 Chrome 书签）执行规则：先预览数量，确认后执行，可撤销。
+async function applyRulesNow() {
+  if (rulesDirty()) { toast(t('settings.tagRulesUnsaved'), 'error'); return; }
+  if (!hasActiveRules(savedRules())) { toast(t('settings.tagRulesEmpty'), 'error'); return; }
+  try {
+    const bookmarkEntries = bookmarkRuleEntries(await chrome.bookmarks.getTree());
+    const preview = await applyTagRulesToExisting({ bookmarkEntries, dryRun: true });
+    if (!preview.changed) {
+      toast(preview.limited ? t('settings.tagRulesApplyLimited', { COUNT: preview.limited }) : t('settings.tagRulesApplyNone'));
+      return;
+    }
+    const message = [
+      t('settings.tagRulesApplyConfirm', { COUNT: preview.changed }),
+      preview.limited ? t('settings.tagRulesApplyLimited', { COUNT: preview.limited }) : '',
+    ].filter(Boolean).join(' ');
+    const ok = await optionDialog(t('settings.tagRulesApplyTitle'), p(message), [
+      { label: t('button.cancel'), kind: 'ghost', cancel: true },
+      { label: t('button.confirm'), kind: 'primary', onClick: async () => true },
+    ]);
+    if (!ok) return;
+    const result = await applyTagRulesToExisting({ bookmarkEntries });
+    await reloadAfterTagChange();
+    toastAction(t('settings.tagRulesApplied', { COUNT: result.changed }), t('tags.undo'), () => undoTagChange(result.snapshot));
+  } catch (error) { toast(error.message || String(error), 'error'); }
+}
+
 function grid(...children) { return h('div', { class: 'options-grid' }, ...children); }
 function card(title, desc, body) { return h('section', { class: 'option-card' }, h('h2', { text: title }), h('p', { class: 'desc', text: desc }), body); }
 function actions(...children) { return h('div', { class: 'actions' }, ...children); }
@@ -260,6 +478,8 @@ function h(tag, attrs = {}, ...children) {
 }
 function button(label, className, onClick) { return h('button', { class: className, onclick: onClick }, label); }
 function toast(message, kind = 'ok') { const el = h('div', { class: 'toast ' + kind, text: message }); document.body.append(el); setTimeout(() => el.remove(), 2600); }
+// 带操作按钮（如撤销）的提示停留更久，留出点击时间。
+function toastAction(message, label, onClick) { const el = h('div', { class: 'toast ok toast-with-action' }, h('span', { text: message }), button(label, 'toast-action', () => { el.remove(); onClick(); })); document.body.append(el); setTimeout(() => el.remove(), 6000); }
 
 function recycleView(stats) {
   const list = h('div', { class: 'recycle-list' });

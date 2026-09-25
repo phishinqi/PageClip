@@ -10,8 +10,11 @@ import {
   pruneRecycleBin,
   loadData,
   updateSettings,
+  applyTagRulesToBookmarks,
+  pruneUrlTags,
 } from './js/store.js';
 import { mergeBrowserBookmarks } from './js/bookmark-import.js';
+import { bookmarkFolderName, hasActiveRules, normalizeTagRules } from './js/tag-model.js';
 import { initI18n, t, getMessages } from './js/i18n.js';
 import { runAutomaticBackup, AUTO_BACKUP_ALARM } from './js/cloud-backup.js';
 import { AUTO_BACKUP_DEBOUNCE_MS, hasBackupRelevantChange } from './js/auto-sync.js';
@@ -22,7 +25,13 @@ const BOOKMARK_IMPORT_RECOVERY_ALARM = 'pageclip-bookmark-import-recovery';
 const BOOKMARK_IMPORT_DEBOUNCE_MINUTES = 1;
 const BOOKMARK_IMPORT_RECOVERY_MINUTES = 24 * 60;
 const AUTO_BACKUP_RECONNECT_NOTIFICATION = 'pageclip-auto-backup-reconnect';
+const BOOKMARK_TAG_RULE_DELAY_MS = 800;
 let bookmarkImportRunning = null;
+// 新建 Chrome 书签的 id 短暂合并后一次处理（例如 Chrome 同步一次带来很多书签）。
+// 这只是事件缓冲：Service Worker 在合并期间被回收时，只会漏掉这一批的自动标签。
+const pendingTagRuleBookmarkIds = new Set();
+let bookmarkTagRuleTimer = null;
+let chromeBookmarkImportActive = false;
 
 function bookmarkImportSettings(data) {
   return data.settings?.bookmarkAutoImport || {};
@@ -88,6 +97,62 @@ async function enableAutomaticBookmarkImport(enabled) {
   await configureBookmarkImportSchedule();
   if (enabled) return runBookmarkImport('initial');
   return { skipped: true, reason: 'disabled' };
+}
+
+async function getBookmarkNodes(ids) {
+  if (!ids.length) return [];
+  try {
+    return await chrome.bookmarks.get(ids);
+  } catch {
+    // 其中有书签已经被删除时整批读取会失败，改为逐个读取并跳过不存在的。
+    const nodes = [];
+    for (const id of ids) {
+      try { nodes.push(...await chrome.bookmarks.get(id)); } catch {}
+    }
+    return nodes;
+  }
+}
+
+async function flushBookmarkTagRules() {
+  bookmarkTagRuleTimer = null;
+  const ids = [...pendingTagRuleBookmarkIds];
+  pendingTagRuleBookmarkIds.clear();
+  if (!ids.length) return false;
+  const rules = normalizeTagRules((await loadData()).settings?.tagRules);
+  if (!rules.autoApply || !hasActiveRules(rules)) return false;
+  const nodes = (await getBookmarkNodes(ids)).filter((node) => node?.url);
+  const parentIds = [...new Set(nodes.map((node) => node.parentId).filter(Boolean))];
+  const parents = new Map((await getBookmarkNodes(parentIds)).map((node) => [node.id, node]));
+  const entries = nodes.map((node) => ({ url: node.url, title: node.title || '', folderName: bookmarkFolderName(parents.get(node.parentId)) }));
+  if (entries.length) await applyTagRulesToBookmarks(entries);
+  return true;
+}
+
+function scheduleBookmarkTagRules() {
+  if (chromeBookmarkImportActive || !pendingTagRuleBookmarkIds.size) return;
+  clearTimeout(bookmarkTagRuleTimer);
+  bookmarkTagRuleTimer = setTimeout(() => { flushBookmarkTagRules().catch(() => {}); }, BOOKMARK_TAG_RULE_DELAY_MS);
+}
+
+function collectBookmarkUrls(node, out = []) {
+  if (node?.url) out.push(node.url);
+  for (const child of node?.children || []) collectBookmarkUrls(child, out);
+  return out;
+}
+
+// 标签相关的书签事件：新建时按规则加标签，删除时清理不再使用的网址标签。
+// Chrome 批量导入期间（onImportBegan → onImportEnded）只收集，结束后统一处理。
+function handleBookmarkTagEvent(eventName, id, info) {
+  if (eventName === 'onCreated' && info?.url) {
+    pendingTagRuleBookmarkIds.add(String(id));
+    scheduleBookmarkTagRules();
+  } else if (eventName === 'onRemoved' && info?.node) {
+    const urls = collectBookmarkUrls(info.node);
+    if (urls.length) pruneUrlTags(urls).catch(() => {});
+  } else if (eventName === 'onImportEnded') {
+    chromeBookmarkImportActive = false;
+    scheduleBookmarkTagRules();
+  }
 }
 
 
@@ -218,8 +283,12 @@ chrome.notifications?.onClicked?.addListener((notificationId) => {
 });
 
 for (const eventName of ['onCreated', 'onChanged', 'onMoved', 'onChildrenReordered', 'onImportEnded', 'onRemoved']) {
-  chrome.bookmarks?.[eventName]?.addListener(() => scheduleAutomaticBookmarkImport('event').catch(() => {}));
+  chrome.bookmarks?.[eventName]?.addListener((...args) => {
+    scheduleAutomaticBookmarkImport('event').catch(() => {});
+    handleBookmarkTagEvent(eventName, ...args);
+  });
 }
+chrome.bookmarks?.onImportBegan?.addListener(() => { chromeBookmarkImportActive = true; });
 
 chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
   try {

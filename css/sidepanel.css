@@ -610,10 +610,15 @@ body.rail-resizing * { cursor: col-resize !important; }
 
 /* 搜索结果：与普通条目共用微悬浮卡片，但使用专用类名避免污染顶部搜索框。 */
 .search-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   font-size: 11.5px;
   color: var(--text-dim);
   padding: 2px 3px 8px;
 }
+.search-selection-toolbar:empty { display: none; }
 .search-group {
   display: flex;
   align-items: center;
@@ -839,6 +844,41 @@ body.rail-resizing * { cursor: col-resize !important; }
 }
 .chip-x:hover { background: rgba(0, 0, 0, 0.12); }
 
+/* 批量编辑标签 */
+.tag-batch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 4px;
+  background: var(--bg);
+}
+.tag-batch-list.is-disabled { opacity: 0.45; pointer-events: none; }
+.tag-batch-empty { color: var(--text-faint); font-size: 11.5px; padding: 4px 6px; }
+.tag-batch-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 4px 0 6px;
+  border-radius: 6px;
+}
+.tag-batch-row:hover { background: var(--bg-hover); }
+.tag-batch-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: 12px; }
+.tag-batch-count { flex: none; color: var(--text-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tag-batch-row.is-removing .tag-batch-name { color: var(--danger); text-decoration: line-through; }
+.tag-batch-row.is-filling .tag-batch-count { color: var(--accent); font-weight: 600; }
+.tag-batch-fill.active { color: var(--accent); background: var(--accent-soft); }
+.tag-batch-remove.active { color: var(--danger); background: var(--danger-soft); }
+.tag-batch-replace { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
+.tag-batch-replace input { accent-color: var(--accent); }
+
+/* Chrome 书签行内的标签 */
+.bm-tags { margin: 6px 0 0; }
+
 /* ———— 模态框 ———— */
 .modal-backdrop {
   position: fixed;
@@ -954,6 +994,19 @@ body.rail-resizing * { cursor: col-resize !important; }
 }
 .toast .ico { color: #7ee2a0; }
 .toast-error .ico { color: #ff9d94; }
+/* #toast-root 不拦截点击；提示本身要能点，否则「撤销」按钮无效。 */
+.toast { pointer-events: auto; }
+.toast-action {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: #9cc3ff;
+  font: inherit;
+  font-weight: 600;
+  padding: 0 0 0 6px;
+  cursor: pointer;
+}
+.toast-action:hover, .toast-action:focus-visible { text-decoration: underline; outline: none; }
 @keyframes toast-in {
   from { transform: translateY(8px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }

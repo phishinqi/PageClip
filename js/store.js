@@ -1,6 +1,12 @@
 // 数据层：chrome.storage.local 读写封装，后台 SW 与侧边栏共用。
 // 所有修改都经由 mutate()（读-改-写）完成，避免跨上下文竞态丢数据。
 
+import {
+  normalizeTags, urlKey, normalizeUrlTags, itemsByUrlKey, tagsOf, writeTags, takeUrlTags, tagsForNewItem,
+  editTags, addTags, renameInTags, removeTags, cleanTag, countTags, normalizeTagRules, hasActiveRules,
+  planRuleTags, collectionFolderName, collectionRuleEntries, taggedUrlKeys, renameTagInRules, removeTagFromRules,
+} from './tag-model.js';
+
 export const STORAGE_KEY = 'bc_data';
 export const UNCATEGORIZED_ID = 'f_uncategorized';
 const SCHEMA_VERSION = 3;
@@ -86,6 +92,7 @@ export function defaultData() {
       { id: UNCATEGORIZED_ID, name: '未分类', parentId: null, order: 0, system: true },
     ],
     items: [],
+    urlTags: {},
     quickAccess: [],
     inbox: [],
     recycleBin: [],
@@ -131,6 +138,13 @@ export async function ensureDataInitialized() {
       if (!item || !isCollectableUrl(item.url)) return null;
       return { id: String(item.id || genId('i')), url: String(item.url).trim().slice(0, 2048), title: String(item.title || item.url).slice(0, 500), folderId: validFolderIds.has(item.folderId) ? item.folderId : UNCATEGORIZED_ID, tags: normalizeTags(item.tags), note: String(item.note || '').slice(0, 2000), createdAt: Number(item.createdAt) || Date.now(), updatedAt: Number(item.updatedAt) || Number(item.createdAt) || Date.now(), pinned: !!item.pinned, order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0, chromeBookmarkIds: normalizeChromeBookmarkIds(item.chromeBookmarkIds) };
     }).filter(Boolean);
+    // 只在 Chrome 书签里的网址标签；同一网址已经在收藏里时并入条目，保证只存一处。
+    const itemsByUrl = itemsByUrlKey(base);
+    for (const [key, tags] of Object.entries(normalizeUrlTags(raw.urlTags))) {
+      const owners = itemsByUrl.get(key);
+      if (owners) owners.forEach((item) => { item.tags = addTags(item.tags, tags).tags; });
+      else base.urlTags[key] = tags;
+    }
     const quickSource = Array.isArray(raw.quickAccess) ? raw.quickAccess : (Array.isArray(raw.quickItems) ? raw.quickItems : []);
     base.quickAccess = quickSource.map(normalizeQuickItem).filter(Boolean);
     base.inbox = (Array.isArray(raw.inbox) ? raw.inbox : []).map(normalizeInboxItem).filter(Boolean);
@@ -177,22 +191,6 @@ export function genId(prefix) {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function normalizeTags(input) {
-  const list = Array.isArray(input) ? input : String(input || '').split(/[,，\s]+/);
-  const seen = new Set();
-  const out = [];
-  for (const raw of list) {
-    const t = String(raw || '').trim().replace(/^#+/, '').slice(0, 24);
-    if (!t) continue;
-    const key = t.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(t);
-    if (out.length >= 12) break;
-  }
-  return out;
-}
-
 // ———— 静默收藏（快捷键 / 顶栏 ＋ 按钮共用） ————
 // 重复 URL：更新 updatedAt 与标题，不新建条目
 export async function collectIntoStorage({ url, title, folderId = UNCATEGORIZED_ID }) {
@@ -211,7 +209,7 @@ export async function collectIntoStorage({ url, title, folderId = UNCATEGORIZED_
       url,
       title: title || url,
       folderId,
-      tags: [],
+      tags: tagsForNewItem(data, { url, title: title || url, folderName: collectionFolderName(data, folderId) }),
       note: '',
       createdAt: now,
       updatedAt: now,
@@ -224,21 +222,31 @@ export async function collectIntoStorage({ url, title, folderId = UNCATEGORIZED_
   });
 }
 
-export async function updateItem(id, patch) {
+// keepOldUrlTags：改网址后仍有 Chrome 书签在用旧网址时，给旧网址留一份标签。
+export async function updateItem(id, patch, { keepOldUrlTags = false } = {}) {
   return mutate((data) => {
     const item = data.items.find((it) => it.id === id);
     if (!item) throw new Error('收藏条目不存在');
+    let inheritedTags = [];
     if (patch.title !== undefined) item.title = String(patch.title).trim().slice(0, 500) || item.title;
     if (patch.url !== undefined) {
       const url = String(patch.url).trim().slice(0, 2048);
       if (!url) throw new Error('网址不能为空');
       if (!isCollectableUrl(url)) throw new Error('网址需以 http://、https:// 或 file:// 开头');
+      if (urlKey(url) !== urlKey(item.url)) {
+        if (keepOldUrlTags && (item.tags || []).length) {
+          data.urlTags = data.urlTags || {};
+          data.urlTags[urlKey(item.url)] = addTags(data.urlTags[urlKey(item.url)] || [], item.tags).tags;
+        }
+        inheritedTags = takeUrlTags(data, url);
+      }
       item.url = url;
     }
     if (patch.folderId !== undefined && data.folders.some((f) => f.id === patch.folderId)) {
       item.folderId = patch.folderId;
     }
     if (patch.tags !== undefined) item.tags = normalizeTags(patch.tags);
+    if (inheritedTags.length) item.tags = addTags(item.tags, inheritedTags).tags;
     if (patch.note !== undefined) item.note = String(patch.note).slice(0, 2000);
     item.updatedAt = Date.now();
     return item;
@@ -304,6 +312,26 @@ export async function moveItem(id, { folderId, beforeId, afterId } = {}) {
     siblings.forEach((s, i) => { s.order = i; });
     item.folderId = targetFolder;
     return item;
+  });
+}
+
+// 多选拖到文件夹：按选择顺序一起追加到目标文件夹末尾，一次写入。
+export async function moveItems(ids, { folderId } = {}) {
+  return mutate((data) => {
+    const target = data.folders.some((f) => f.id === folderId) ? folderId : UNCATEGORIZED_ID;
+    const moving = [];
+    for (const id of new Set(ids || [])) {
+      const item = data.items.find((it) => it.id === id);
+      if (item) moving.push(item);
+    }
+    if (!moving.length) return { count: 0, folderId: target };
+    const movingIds = new Set(moving.map((item) => item.id));
+    const siblings = data.items
+      .filter((it) => it.folderId === target && !movingIds.has(it.id))
+      .sort((a, b) => a.order - b.order);
+    [...siblings, ...moving].forEach((item, i) => { item.order = i; });
+    moving.forEach((item) => { item.folderId = target; });
+    return { count: moving.length, folderId: target };
   });
 }
 
@@ -542,6 +570,7 @@ export async function restoreRecycleEntry(id) {
       for (const item of items) {
         if (!item || existing.has(item.url)) continue;
         item.folderId = data.folders.some((folder) => folder.id === item.folderId) ? item.folderId : UNCATEGORIZED_ID;
+        item.tags = addTags(item.tags, takeUrlTags(data, item.url)).tags;
         const index = payload.indices?.[item.id] ?? payload.index;
         const at = Number.isInteger(index) ? Math.min(Math.max(index, 0), data.items.length) : data.items.length;
         data.items.splice(at, 0, item);
@@ -558,7 +587,7 @@ export async function restoreRecycleEntry(id) {
       }
       const existing = new Set(data.items.map((item) => item.url));
       for (const item of payload.items || []) if (item && !existing.has(item.url)) {
-        data.items.push({ ...item, folderId: knownFolders.has(item.folderId) ? item.folderId : UNCATEGORIZED_ID });
+        data.items.push({ ...item, folderId: knownFolders.has(item.folderId) ? item.folderId : UNCATEGORIZED_ID, tags: addTags(item.tags, takeUrlTags(data, item.url)).tags });
         existing.add(item.url);
       }
     }
@@ -760,9 +789,178 @@ export function getStats(data) {
   return {
     items: data.items.length,
     folders: data.folders.filter((f) => !f.system).length,
-    tags: collectTags(data).size,
+    tags: countTags(data).length,
     monthNew: data.items.filter((it) => it.createdAt >= monthStart.getTime()).length,
   };
+}
+
+// ———— 标签：批量编辑、全局改名/删除、自动规则 ————
+// 收藏和 Chrome 书签按网址共用标签，所以这些操作都以网址为单位；返回的 snapshot 用于撤销。
+
+// 只在确实有修改时写回，避免后台书签事件引起无意义的存储写入和界面刷新。
+async function mutateIfChanged(fn) {
+  return withDataLock(async () => {
+    const data = await loadData();
+    const ret = await fn(data);
+    if (ret?.changed) await saveData(data);
+    return ret;
+  });
+}
+
+function applyTagUpdates(data, updates) {
+  const items = itemsByUrlKey(data);
+  const previous = {};
+  for (const [key, tags] of updates) {
+    previous[key] = [...tagsOf(data, key, items)];
+    writeTags(data, key, tags, items);
+  }
+  return previous;
+}
+
+function saveTagRules(data, rules) {
+  if (!data.settings) data.settings = {};
+  data.settings.tagRules = normalizeTagRules(rules);
+}
+
+// edit: { add, remove, replace }，语义见 tag-model.editTags。
+export async function editTagsForUrls(urls, edit) {
+  const keys = [...new Set((urls || []).map(urlKey).filter(Boolean))];
+  return mutate((data) => {
+    const items = itemsByUrlKey(data);
+    const updates = new Map();
+    let limited = 0;
+    for (const key of keys) {
+      const result = editTags(tagsOf(data, key, items), edit);
+      if (result.skipped) limited++;
+      if (result.changed) updates.set(key, result.tags);
+    }
+    return { changed: updates.size, limited, snapshot: { urls: applyTagUpdates(data, updates) } };
+  });
+}
+
+// 单条 Chrome 书签编辑。改了网址时，新网址原有的标签合并保留；旧网址没有别的书签在用就清掉。
+export async function setBookmarkTags({ url, tags, previousUrl = '', previousUrlInUse = true }) {
+  return mutate((data) => {
+    const items = itemsByUrlKey(data);
+    const key = urlKey(url);
+    const oldKey = urlKey(previousUrl);
+    const moved = !!oldKey && oldKey !== key;
+    const next = moved ? addTags(tags, tagsOf(data, key, items)).tags : normalizeTags(tags);
+    writeTags(data, key, next, items);
+    if (moved && !previousUrlInUse && !items.has(oldKey) && data.urlTags) delete data.urlTags[oldKey];
+    return next;
+  });
+}
+
+export async function restoreTagSnapshot(snapshot) {
+  return mutate((data) => {
+    const items = itemsByUrlKey(data);
+    const entries = Object.entries(snapshot?.urls || {});
+    for (const [key, tags] of entries) writeTags(data, key, tags, items);
+    if (snapshot?.rules) saveTagRules(data, snapshot.rules);
+    return entries.length;
+  });
+}
+
+// 全局改名；目标名已经存在时就是合并。规则里的同名标签一起改。
+export async function renameTag(from, to) {
+  const target = cleanTag(to);
+  if (!cleanTag(from) || !target) throw new Error('标签名不能为空');
+  return mutate((data) => {
+    const items = itemsByUrlKey(data);
+    const updates = new Map();
+    for (const key of taggedUrlKeys(data)) {
+      const result = renameInTags(tagsOf(data, key, items), from, target);
+      if (result.changed) updates.set(key, result.tags);
+    }
+    const snapshot = { urls: applyTagUpdates(data, updates) };
+    const rules = normalizeTagRules(data.settings?.tagRules);
+    const renamed = renameTagInRules(rules, from, target);
+    if (renamed.changed) {
+      snapshot.rules = rules;
+      saveTagRules(data, renamed.rules);
+    }
+    return { changed: updates.size, rulesChanged: renamed.changed, snapshot };
+  });
+}
+
+// 从所有书签上删除一个标签；规则里也去掉，去掉后没有标签的规则一并删除。
+export async function deleteTag(tag) {
+  if (!cleanTag(tag)) throw new Error('标签名不能为空');
+  return mutate((data) => {
+    const items = itemsByUrlKey(data);
+    const updates = new Map();
+    for (const key of taggedUrlKeys(data)) {
+      const before = tagsOf(data, key, items);
+      const next = removeTags(before, [tag]);
+      if (next.length !== before.length) updates.set(key, next);
+    }
+    const snapshot = { urls: applyTagUpdates(data, updates) };
+    const rules = normalizeTagRules(data.settings?.tagRules);
+    const removed = removeTagFromRules(rules, tag);
+    if (removed.changed) {
+      snapshot.rules = rules;
+      saveTagRules(data, removed.rules);
+    }
+    return { changed: updates.size, rulesChanged: removed.changed, snapshot };
+  });
+}
+
+export async function updateTagRules(rules) {
+  return mutate((data) => {
+    saveTagRules(data, rules);
+    return data.settings.tagRules;
+  });
+}
+
+// 手动对现有书签执行规则。bookmarkEntries 由调用方从 Chrome 书签树整理（tag-model.bookmarkRuleEntries）。
+export async function applyTagRulesToExisting({ bookmarkEntries = [], dryRun = false } = {}) {
+  const plan = (data) => planRuleTags(data, [...collectionRuleEntries(data), ...bookmarkEntries]);
+  if (dryRun) {
+    const { updates, limited } = plan(await loadData());
+    return { changed: updates.size, limited };
+  }
+  return mutate((data) => {
+    const { updates, limited } = plan(data);
+    return { changed: updates.size, limited, snapshot: { urls: applyTagUpdates(data, updates) } };
+  });
+}
+
+// 新建的 Chrome 书签：开启自动执行且规则有结果时才写入。
+export async function applyTagRulesToBookmarks(entries) {
+  return mutateIfChanged((data) => {
+    const rules = normalizeTagRules(data.settings?.tagRules);
+    if (!rules.autoApply || !hasActiveRules(rules)) return { changed: 0 };
+    const { updates } = planRuleTags(data, entries, rules);
+    applyTagUpdates(data, updates);
+    return { changed: updates.size };
+  });
+}
+
+async function isChromeBookmarked(url) {
+  try {
+    return (await chrome.bookmarks.search({ url })).length > 0;
+  } catch {
+    return true;
+  }
+}
+
+// Chrome 书签被删后，清掉已经没有任何书签或收藏在用的网址标签。
+export async function pruneUrlTags(urls, isBookmarked = isChromeBookmarked) {
+  const keys = [...new Set((urls || []).map(urlKey).filter(Boolean))];
+  if (!keys.length) return { changed: 0 };
+  const current = await loadData();
+  if (!keys.some((key) => current.urlTags?.[key])) return { changed: 0 };
+  return mutateIfChanged(async (data) => {
+    const items = itemsByUrlKey(data);
+    let changed = 0;
+    for (const key of keys) {
+      if (!data.urlTags?.[key] || items.has(key) || await isBookmarked(key)) continue;
+      delete data.urlTags[key];
+      changed++;
+    }
+    return { changed };
+  });
 }
 
 
@@ -782,7 +980,7 @@ function cloudCounts(data) {
     inbox: (data.inbox || []).length,
     recycleEntries: getRecycleStats(data).entries,
     folders: (data.folders || []).filter((folder) => !folder.system).length,
-    tags: collectTags(data).size,
+    tags: countTags(data).length,
   };
 }
 function sameCloudItem(left, right) {
@@ -849,20 +1047,31 @@ function restoreFolders(data, incomingFolders, replace) {
 }
 function folderPathForData(folders, id) { const byId = new Map(folders.map((folder) => [folder.id, folder])); const parts = []; let current = byId.get(id); while (current && !current.system) { parts.unshift(current.name); current = current.parentId ? byId.get(current.parentId) : null; } return parts.join(' / '); }
 
+// 导入或恢复带来的 Chrome 书签标签：本机已有记录的网址保持不变，已在收藏里的网址以条目自己的标签为准。
+function mergeIncomingUrlTags(data, incoming) {
+  const items = itemsByUrlKey(data);
+  if (!data.urlTags || typeof data.urlTags !== 'object') data.urlTags = {};
+  for (const [key, tags] of Object.entries(normalizeUrlTags(incoming))) {
+    if (items.has(key) || data.urlTags[key]) continue;
+    data.urlTags[key] = tags;
+  }
+}
+
 export async function restoreCloudPayload(cloudData, mode = 'merge') {
   if (!cloudData || cloudData.schema !== 3 || !Array.isArray(cloudData.items) || !Array.isArray(cloudData.folders)) throw new Error('云端数据不是有效的 schema 3 备份');
   return mutate((data) => {
     const localCloudBackup = cloneJson(data.settings?.cloudBackup || {});
     const remoteCloudBackup = cloneJson(cloudData.settings?.cloudBackup || {});
     if (mode === 'replace') {
-      data.folders = []; data.items = []; data.quickAccess = []; data.inbox = []; data.recycleBin = []; data.settings = { ...defaultData().settings, ...(cloudData.settings || {}) };
+      data.folders = []; data.items = []; data.urlTags = {}; data.quickAccess = []; data.inbox = []; data.recycleBin = []; data.settings = { ...defaultData().settings, ...(cloudData.settings || {}) };
       data.settings.cloudBackup = { ...remoteCloudBackup, ...localCloudBackup, password: remoteCloudBackup.password || localCloudBackup.password };
     } else if (remoteCloudBackup.password && !localCloudBackup.password) {
       data.settings.cloudBackup = { ...localCloudBackup, password: remoteCloudBackup.password };
     }
     const idMap = restoreFolders(data, cloudData.folders, mode === 'replace');
     const urls = new Set(data.items.map((item) => item.url));
-    for (const raw of cloudData.items) { if (!raw || !isCollectableUrl(raw.url) || urls.has(raw.url)) continue; data.items.push({ ...cloneJson(raw), id: String(raw.id || genId('i')), folderId: idMap.get(raw.folderId) || (data.folders.some((folder) => folder.id === raw.folderId) ? raw.folderId : UNCATEGORIZED_ID) }); urls.add(raw.url); }
+    for (const raw of cloudData.items) { if (!raw || !isCollectableUrl(raw.url) || urls.has(raw.url)) continue; data.items.push({ ...cloneJson(raw), id: String(raw.id || genId('i')), folderId: idMap.get(raw.folderId) || (data.folders.some((folder) => folder.id === raw.folderId) ? raw.folderId : UNCATEGORIZED_ID), tags: addTags(raw.tags, takeUrlTags(data, raw.url)).tags }); urls.add(raw.url); }
+    mergeIncomingUrlTags(data, cloudData.urlTags);
     const quickUrls = new Set(data.quickAccess.filter((item) => item.type === 'single').map((item) => item.url));
     for (const raw of cloudData.quickAccess || []) { const item = normalizeQuickItem(raw); if (!item) continue; if (item.type === 'single') { if (quickUrls.has(item.url)) continue; quickUrls.add(item.url); data.quickAccess.push(item); } else { const sameId = data.quickAccess.find((current) => current.type === 'group' && current.id === item.id); if (!sameId) data.quickAccess.push(item); } }
     data.quickAccess.forEach((item, index) => { item.order = index; });
@@ -891,6 +1100,7 @@ export function exportPayload(data) {
     items: data.items.map((it) =>
       pick(it, ['id', 'url', 'title', 'folderId', 'tags', 'note', 'createdAt', 'updatedAt', 'pinned', 'order', 'chromeBookmarkIds'])
     ),
+    urlTags: normalizeUrlTags(data.urlTags),
     quickAccess: (data.quickAccess || []).map((item) => ({ ...item })),
     inbox: (data.inbox || []).map((item) => ({ ...item })),
     recycleBin: (data.recycleBin || []).map((entry) => ({ ...entry, payload: JSON.parse(JSON.stringify(entry.payload || {})) })),
@@ -928,6 +1138,7 @@ export async function importPayload(payload, mode = 'merge') {
       const fresh = defaultData();
       data.folders = fresh.folders;
       data.items = [];
+      data.urlTags = {};
       data.quickAccess = [];
       data.inbox = [];
       data.recycleBin = [];
@@ -972,6 +1183,14 @@ export async function importPayload(payload, mode = 'merge') {
       const it = sanitizeItem(raw);
       if (!it || !isCollectableUrl(it.url) || existingUrls.has(it.url)) continue;
       it.folderId = idMap.get(it.folderId) || UNCATEGORIZED_ID;
+      // 替换导入等同于恢复备份，不执行自动规则；合并导入的新条目按新增处理。
+      it.tags = tagsForNewItem(data, {
+        url: it.url,
+        title: it.title,
+        folderName: collectionFolderName(data, it.folderId),
+        tags: it.tags,
+        applyRules: mode !== 'replace',
+      });
       it.order = data.items.length
         ? Math.max(...data.items.map((x) => x.order || 0)) + 1
         : 0;
@@ -979,6 +1198,7 @@ export async function importPayload(payload, mode = 'merge') {
       existingUrls.add(it.url);
       itemsAdded++;
     }
+    mergeIncomingUrlTags(data, payload.urlTags);
 
     if (mode === 'merge' || mode === 'replace') {
       const quick = Array.isArray(payload.quickAccess) ? payload.quickAccess.map(normalizeQuickItem).filter(Boolean) : [];

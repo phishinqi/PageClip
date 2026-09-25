@@ -7,7 +7,16 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Last Web Store package: release/PageClip-v1.6.11.zip
+- Last Web Store package: release/PageClip-v1.7.0.zip
+
+## 1.7.0 release notes
+
+- Batch tag editing for PageClip collections and Chrome bookmarks: open one editor from the selection toolbar, the multi-selection context menu, or a folder context menu to add, remove, fill, or replace tags. Each bookmark keeps at most 12 tags, and every batch edit can be undone.
+- Search results can be multi-selected (Ctrl to toggle, Shift for a range, or Select all) and tagged in one batch across collections and Chrome bookmarks. Chrome bookmark search results are no longer capped at 50.
+- Chrome bookmarks can now carry tags. Tags are stored in PageClip data and shared by URL with PageClip collections; PageClip never writes them into Chrome bookmarks. Searching `#tag` now filters both collections and Chrome bookmarks.
+- Global tag management in Settings and from the tag strip context menu: rename, merge, or delete a tag everywhere after a confirmation, with undo. Matching tags inside rules are updated too.
+- Optional tagging rules by domain (including subdomains), title or URL keyword, and nearest folder name. Rules run for new bookmarks and can be applied to existing bookmarks on demand; they only add tags and never remove them.
+- Fixed dropping a multi-selection onto a folder so every selected item moves, made toast Undo buttons clickable, and stopped clicks on the tag field label from removing the first tag.
 
 ## 1.6.11 release notes
 
@@ -63,11 +72,13 @@ PageClip keeps your browser workflow organized without mixing permanent bookmark
 
 Automatic browser-bookmark import is opt-in and additive: PageClip reads Chrome bookmarks, adds only eligible URLs not already in PageClip, and never changes Chrome. Chrome-side deletes, moves, renames, and URL edits do not delete or overwrite PageClip copies. Copied records remain local unless the user later chooses an encrypted export, manual cloud backup, or enables automatic cloud backup and PageClip data changes.
 
+Tags can be batch-edited across PageClip collections and Chrome bookmarks. Tags on Chrome bookmarks are stored only in PageClip data, keyed by URL, and are never written into Chrome bookmarks. Optional tagging rules run locally and only add tags.
+
 PageClip does not modify Chrome bookmarks when importing or restoring PageClip cloud data. Google Drive backups are encrypted before upload, and PageClip does not operate a separate application server, advertising system, or analytics tracker.
 
 ## Permission justifications
 
-- bookmarks: read and manage Chrome native bookmarks in the dedicated Chrome Bookmarks view; manual and opt-in automatic browser-bookmark import are additive copy-only operations.
+- bookmarks: read and manage Chrome native bookmarks in the dedicated Chrome Bookmarks view; manual and opt-in automatic browser-bookmark import are additive copy-only operations; optional user-defined tagging rules read the title, URL, and folder name of new bookmarks to add PageClip tags.
 - tabs: read the active tab or current window tab URLs and titles for collection, Inbox, and quick tab collection actions.
 - storage: store PageClip data locally in chrome.storage.local.
 - favicon: display website favicons.

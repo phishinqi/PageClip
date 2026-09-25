@@ -43,6 +43,9 @@ const collection = createCollectionTab({
 const bookmarks = createBookmarksTab({
   scrollEl: $('bm-scroll'),
   getActiveTab,
+  getData: () => data,
+  refresh,
+  setSearch,
 });
 
 const quickAccess = createQuickAccessTab({
@@ -166,15 +169,14 @@ function renderCurrent() {
   $('view-inbox').hidden = !!q || state.tab !== 'inbox';
   $('view-bookmarks').hidden = !!q || state.tab !== 'bookmarks';
   if (q) {
-    renderSearch($('search-scroll'), q, {
+    const searchCtx = {
       getData: () => data,
-      searchBookmarks: (tokens) => bookmarks.searchAll(tokens),
-    });
+      refresh,
+      searchBookmarks: (textTokens, tagTokens) => bookmarks.searchAll(textTokens, tagTokens),
+    };
+    renderSearch($('search-scroll'), q, searchCtx);
     bookmarks.ensureLoaded().then(() => {
-      if (state.search === q) renderSearch($('search-scroll'), q, {
-        getData: () => data,
-        searchBookmarks: (tokens) => bookmarks.searchAll(tokens),
-      });
+      if (state.search === q) renderSearch($('search-scroll'), q, searchCtx);
     }).catch(() => {});
     return;
   }
@@ -185,8 +187,17 @@ function renderCurrent() {
   } else if (state.tab === 'inbox') {
     inbox.render();
   } else {
-    bookmarks.ensureLoaded();
+    bookmarks.ensureLoaded().then(() => bookmarks.refreshTags()).catch(() => {});
   }
+}
+
+// 点击 Chrome 书签上的标签等场景：把关键字填进顶部搜索框并立即搜索。
+function setSearch(query) {
+  const searchInput = $('searchInput');
+  searchInput.value = query;
+  state.search = query.trim();
+  $('btnClearSearch').hidden = !state.search;
+  renderCurrent();
 }
 
 // ———— 收藏当前页 ————

@@ -21,6 +21,9 @@ for (const domain of ['folders', 'items', 'quickAccess', 'inbox', 'recycleBin'])
   changed[domain].push({ id: domain + '-changed' });
   assert.equal(hasBackupRelevantChange(base, changed), true, domain + ' changes should schedule a backup');
 }
+const tagged = structuredClone(base);
+tagged.urlTags = { 'https://chrome-only.example/': ['tag'] };
+assert.equal(hasBackupRelevantChange(base, tagged), true, 'Chrome bookmark tag changes should schedule a backup');
 
 const settingsOnly = structuredClone(base);
 settingsOnly.settings.uiLocale = 'en';
