@@ -243,9 +243,9 @@ export function normalizeDomain(input) {
   }
 }
 
-function normalizeRuleList(list, field, clean) {
+function normalizeRuleList(list, field, clean, extra = () => ({})) {
   return (Array.isArray(list) ? list : [])
-    .map((rule) => ({ [field]: clean(rule?.[field]), tags: normalizeTags(rule?.tags) }))
+    .map((rule) => ({ [field]: clean(rule?.[field]), tags: normalizeTags(rule?.tags), ...extra(rule) }))
     .filter((rule) => rule[field] && rule.tags.length)
     .slice(0, MAX_RULES);
 }
@@ -255,7 +255,11 @@ export function normalizeTagRules(raw) {
   return {
     autoApply: source.autoApply !== false,
     folder: source.folder === true,
-    domains: normalizeRuleList(source.domains, 'domain', normalizeDomain),
+    // Older rules matched a domain and all of its subdomains. Keep that
+    // behavior when `match` is absent so existing users do not lose tags.
+    domains: normalizeRuleList(source.domains, 'domain', normalizeDomain, (rule) => ({
+      match: rule?.match === 'exact' ? 'exact' : 'subdomains',
+    })),
     keywords: normalizeRuleList(source.keywords, 'keyword', (value) => String(value || '').trim().slice(0, 100)),
   };
 }
@@ -272,12 +276,15 @@ function hostOf(url) {
   }
 }
 
-// 顺序：域名规则 → 关键词规则 → 文件夹名。域名同时匹配子域名；关键词在标题或网址里找，不区分大小写。
+// 顺序：域名规则 → 关键词规则 → 文件夹名。域名规则可精确匹配主机名，或包含其下级子域名。
 export function ruleTagsFor({ url = '', title = '', folderName = '' } = {}, rules) {
   const out = [];
   const host = hostOf(url);
   for (const rule of rules.domains) {
-    if (host && (host === rule.domain || host.endsWith(`.${rule.domain}`))) out.push(...rule.tags);
+    const matched = rule.match === 'exact'
+      ? host === rule.domain
+      : host === rule.domain || host.endsWith(`.${rule.domain}`);
+    if (host && matched) out.push(...rule.tags);
   }
   const hay = `${title}\n${url}`.toLowerCase();
   for (const rule of rules.keywords) if (hay.includes(rule.keyword.toLowerCase())) out.push(...rule.tags);

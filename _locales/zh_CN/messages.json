@@ -763,14 +763,24 @@
   "settings_bookmarkAutoImportLast": {
     "message": "上次导入：$TIME$ · 新增 $ADDED$ 条 · 跳过重复 $DUPLICATES$ 条",
     "placeholders": {
-      "time": { "content": "$1" },
-      "added": { "content": "$2" },
-      "duplicates": { "content": "$3" }
+      "time": {
+        "content": "$1"
+      },
+      "added": {
+        "content": "$2"
+      },
+      "duplicates": {
+        "content": "$3"
+      }
     }
   },
   "settings_bookmarkAutoImportError": {
     "message": "上次导入失败：$ERROR$",
-    "placeholders": { "error": { "content": "$1" } }
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
   },
   "settings_bookmarkAutoImportRetry": {
     "message": "立即重试"
@@ -778,9 +788,15 @@
   "settings_bookmarkAutoImportDone": {
     "message": "导入完成：新增 $ADDED$ 条，重复 $DUPLICATES$ 条，无效 $INVALID$ 条",
     "placeholders": {
-      "added": { "content": "$1" },
-      "duplicates": { "content": "$2" },
-      "invalid": { "content": "$3" }
+      "added": {
+        "content": "$1"
+      },
+      "duplicates": {
+        "content": "$2"
+      },
+      "invalid": {
+        "content": "$3"
+      }
     }
   },
   "settings_bookmarkAutoImportSaved": {
@@ -1252,5 +1268,238 @@
   },
   "content_iframeTitle": {
     "message": "PageClip 网页侧栏"
+  },
+  "settings_sectionOverview": {
+    "message": "概览"
+  },
+  "settings_sectionTags": {
+    "message": "标签"
+  },
+  "settings_sectionImport": {
+    "message": "导入与导出"
+  },
+  "settings_sectionBackup": {
+    "message": "备份与数据"
+  },
+  "settings_sectionGeneral": {
+    "message": "通用"
+  },
+  "settings_sectionAbout": {
+    "message": "About"
+  },
+  "settings_navigation": {
+    "message": "设置分类"
+  },
+  "settings_searchKicker": {
+    "message": "快速查找"
+  },
+  "settings_searchHint": {
+    "message": "搜索设置、操作和说明"
+  },
+  "settings_searchPlaceholder": {
+    "message": "搜索设置…"
+  },
+  "settings_searchEmpty": {
+    "message": "没有找到匹配的设置，请换个关键词试试。"
+  },
+  "settings_tagManager": {
+    "message": "标签管理"
+  },
+  "settings_tagManagerHint": {
+    "message": "统一查看、重命名、合并或删除 PageClip 标签；标签也会同步更新自动规则。"
+  },
+  "settings_tagManagerEmpty": {
+    "message": "还没有标签"
+  },
+  "settings_tagCount": {
+    "message": "$COUNT$ 个网址",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_tagRules": {
+    "message": "自动标签规则"
+  },
+  "settings_tagRulesHint": {
+    "message": "按域名、标题或网址关键词、文件夹自动添加标签。规则只添加标签，不会删除已有标签。"
+  },
+  "settings_tagRulesAuto": {
+    "message": "保存新书签时自动执行规则"
+  },
+  "settings_tagRulesFolder": {
+    "message": "按所在文件夹名称添加标签"
+  },
+  "settings_tagRulesFolderHint": {
+    "message": "只使用最近一层用户文件夹；系统文件夹和顶层导入目录不会添加标签。"
+  },
+  "settings_tagRulesDomains": {
+    "message": "域名规则"
+  },
+  "settings_tagRulesDomainsHint": {
+    "message": "输入 example.com 或 docs.example.com，再选择是否包含下级子域名。"
+  },
+  "settings_tagRulesKeywords": {
+    "message": "关键词规则"
+  },
+  "settings_tagRulesKeywordsHint": {
+    "message": "标题或网址包含关键词时添加标签，不区分大小写。"
+  },
+  "settings_tagRuleDomainPlaceholder": {
+    "message": "域名，例如 docs.example.com"
+  },
+  "settings_tagRuleKeywordPlaceholder": {
+    "message": "关键词，例如 react"
+  },
+  "settings_tagRuleMatch": {
+    "message": "域名匹配范围"
+  },
+  "settings_tagRuleMatchSubdomains": {
+    "message": "包含所有子域名"
+  },
+  "settings_tagRuleMatchExact": {
+    "message": "仅此主机"
+  },
+  "settings_tagRuleTagsPlaceholder": {
+    "message": "要添加的标签，用逗号分隔"
+  },
+  "settings_tagRuleAdd": {
+    "message": "添加规则"
+  },
+  "settings_tagRulesSave": {
+    "message": "保存规则"
+  },
+  "settings_tagRulesApply": {
+    "message": "应用到现有书签"
+  },
+  "settings_tagRulesSaved": {
+    "message": "标签规则已保存"
+  },
+  "settings_tagRulesIgnored": {
+    "message": "已忽略 $COUNT$ 条无效规则",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_tagRulesUnsaved": {
+    "message": "请先保存标签规则"
+  },
+  "settings_tagRulesEmpty": {
+    "message": "还没有可执行的标签规则"
+  },
+  "settings_tagRulesApplyTitle": {
+    "message": "应用标签规则"
+  },
+  "settings_tagRulesApplyConfirm": {
+    "message": "将为 $COUNT$ 个网址添加标签，继续吗？",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_tagRulesApplyLimited": {
+    "message": "有 $COUNT$ 个网址因标签数量上限未完全添加",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_tagRulesApplyNone": {
+    "message": "没有需要更新的标签"
+  },
+  "settings_tagRulesApplied": {
+    "message": "已更新 $COUNT$ 个网址",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_aboutTitle": {
+    "message": "关于 PageClip"
+  },
+  "settings_aboutHint": {
+    "message": "了解版本、项目链接、数据边界和隐私相关信息。"
+  },
+  "settings_version": {
+    "message": "版本 $VERSION$",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_aboutSummary": {
+    "message": "PageClip 是一个本地优先的浏览器工作流工具，用于收藏网页、整理标签和文件夹、暂存 Inbox，并可选择使用客户端加密备份。"
+  },
+  "settings_aboutLocalTitle": {
+    "message": "本地优先"
+  },
+  "settings_aboutLocalText": {
+    "message": "收藏、标签、文件夹和设置默认保存在当前浏览器的 chrome.storage.local。"
+  },
+  "settings_aboutBackupTitle": {
+    "message": "加密备份"
+  },
+  "settings_aboutBackupText": {
+    "message": "Google Drive 备份在上传前于本机加密；备份密码和原始本机密钥不会上传。"
+  },
+  "settings_aboutPermissionTitle": {
+    "message": "权限边界"
+  },
+  "settings_aboutPermissionText": {
+    "message": "Chrome 书签仅在相关功能启用或执行时读取；PageClip 不修改原生书签，不提供广告或行为追踪。"
+  },
+  "settings_aboutGithub": {
+    "message": "GitHub 源码"
+  },
+  "settings_aboutIssues": {
+    "message": "反馈与问题"
+  },
+  "settings_aboutWebsite": {
+    "message": "项目官网"
+  },
+  "settings_aboutStore": {
+    "message": "Chrome 应用商店"
+  },
+  "settings_aboutPrivacy": {
+    "message": "隐私政策"
+  },
+  "settings_aboutTerms": {
+    "message": "服务条款"
+  },
+  "settings_cloudConnected": {
+    "message": "已连接"
+  },
+  "settings_recoveryExported": {
+    "message": "恢复密钥已导出"
+  },
+  "settings_recoveryImported": {
+    "message": "恢复密钥已导入"
+  },
+  "settings_restoreHint": {
+    "message": "合并会保留本机数据并补充云端内容；替换会用云端数据覆盖当前 PageClip 数据。"
+  },
+  "settings_restoreMergeDone": {
+    "message": "云端数据已合并"
+  },
+  "settings_restoreReplaceDone": {
+    "message": "云端数据已替换本机数据"
+  },
+  "settings_restoreTime": {
+    "message": "备份时间：$TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_signedOut": {
+    "message": "已退出 Google Drive"
   }
 }

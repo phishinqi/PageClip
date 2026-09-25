@@ -49,6 +49,14 @@ assert.equal(rules.autoApply, true);
 assert.equal(rules.domains.length, 1);
 assert.deepEqual(ruleTagsFor({ url: 'https://gist.github.com/x', title: 'Learn React hooks', folderName: '前端' }, rules), ['GitHub', 'React', '前端']);
 assert.deepEqual(ruleTagsFor({ url: 'https://notgithub.com/', title: 'Other', folderName: '' }, rules), []);
+const hostRules = normalizeTagRules({ domains: [
+  { domain: 'example.com', tags: ['site'] },
+  { domain: 'docs.example.com', match: 'exact', tags: ['docs'] },
+] });
+assert.equal(hostRules.domains[0].match, 'subdomains');
+assert.deepEqual(ruleTagsFor({ url: 'https://docs.example.com/guide' }, hostRules), ['site', 'docs']);
+assert.deepEqual(ruleTagsFor({ url: 'https://api.docs.example.com/v1' }, hostRules), ['site']);
+assert.deepEqual(ruleTagsFor({ url: 'https://www.docs.example.com/guide' }, hostRules), ['site', 'docs']);
 
 assert.equal(folderTagName('书签栏'), '');
 assert.equal(folderTagName('Bookmarks Bar'), '');

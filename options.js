@@ -19,6 +19,8 @@ let cloudStatus = { connected: false, account: null, file: null };
 let liveBookmarkUrls = null;
 // 正在编辑、尚未保存的标签规则（输入框用文本表示标签）。
 let rulesDraft = null;
+let settingSearchQuery = '';
+let activeSettingSection = 'overview';
 
 async function init() {
   await ensureDataInitialized();
@@ -37,8 +39,12 @@ function render() {
   const recycle = getRecycleStats(data);
   const quick = data.quickAccess || [];
   root.replaceChildren(
-    grid(
-      card(t('settings.stats'), t('settings.statsHint'), h('div', { class: 'stat-grid' },
+    settingsToolbar(),
+    h('div', { class: 'settings-layout' },
+      settingsNav(),
+      h('div', { class: 'settings-content' },
+        settingsSection('overview', t('settings.sectionOverview'),
+          card(t('settings.stats'), t('settings.statsHint'), h('div', { class: 'stat-grid' },
         stat(stats.items, t('settings.permanent')),
         stat(quick.filter((item) => item.type === 'single').length, t('settings.quickSingles')),
         stat(quick.filter((item) => item.type === 'group').length, t('settings.quickGroups')),
@@ -47,28 +53,132 @@ function render() {
         stat(stats.folders, t('settings.folders')),
         stat(countTags(data, { liveUrls: liveBookmarkUrls }).length, t('settings.tags')),
         stat(recycle.entries, t('settings.recycleEntries'))
-      )),
-      languageCard(),
-      cloudCard(),
-      card(t('settings.backup'), t('settings.backupHint'), actions(
+      )), { search: t('settings.stats') + ' ' + t('settings.statsHint'), full: true })),
+        settingsSection('tags', t('settings.sectionTags'),
+          tagManagerCard(),
+          tagRulesCard()),
+        settingsSection('import', t('settings.sectionImport'),
+          card(t('settings.importBookmarks'), t('settings.bookmarksHint'), h('div', {}, actions(
+            button(t('settings.readBookmarks'), 'primary', importCurrentBookmarks),
+            button(t('settings.chooseBookmarks'), '', chooseHtml)
+          ), autoBookmarkImportControls()), { search: t('settings.importBookmarks') + ' ' + t('settings.bookmarksHint') }),
+          card(t('settings.htmlCsv'), t('settings.htmlCsvHint'), exportActions(), { search: t('settings.htmlCsv') + ' ' + t('settings.htmlCsvHint') })),
+        settingsSection('backup', t('settings.sectionBackup'),
+          card(t('settings.backup'), t('settings.backupHint'), actions(
         button(t('settings.exportJson'), 'primary', exportJson),
         button(t('settings.importJson'), '', chooseJson)
-      )),
-      card(t('settings.importBookmarks'), t('settings.bookmarksHint'), h('div', {}, actions(
-        button(t('settings.readBookmarks'), 'primary', importCurrentBookmarks),
-        button(t('settings.chooseBookmarks'), '', chooseHtml)
-      ), autoBookmarkImportControls())),
-      tagManagerCard(),
-      tagRulesCard(),
-      card(t('settings.htmlCsv'), t('settings.htmlCsvHint'), exportActions()),
-      card(t('settings.recycle'), t('settings.recycleHint'), recycleView(recycle)),
-      card(t('settings.shortcuts'), t('settings.shortcutsHint'), h('div', {},
-        p(t('settings.shortcutsText')),
-        button('打开快捷键设置', '', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })),
-        h('p', { class: 'desc option-note', text: t('settings.localNote') })
-      ))
+          ), { search: t('settings.backup') + ' ' + t('settings.backupHint') }),
+          cloudCard(),
+          card(t('settings.recycle'), t('settings.recycleHint'), recycleView(recycle), { search: t('settings.recycle') + ' ' + t('settings.recycleHint') })),
+        settingsSection('general', t('settings.sectionGeneral'),
+          languageCard(),
+          card(t('settings.shortcuts'), t('settings.shortcutsHint'), h('div', {},
+            p(t('settings.shortcutsText')),
+            button(t('settings.openShortcuts'), '', () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })),
+            h('p', { class: 'desc option-note', text: t('settings.localNote') })
+          ), { search: t('settings.shortcuts') + ' ' + t('settings.shortcutsHint') + ' ' + t('settings.openShortcuts') })),
+        settingsSection('about', t('settings.sectionAbout'), aboutCard()),
+        h('p', { class: 'settings-search-empty', id: 'settings-search-empty', hidden: true, text: t('settings.searchEmpty') })
+      )
     )
   );
+  filterSettings();
+}
+
+function settingsToolbar() {
+  const input = h('input', {
+    class: 'settings-search',
+    type: 'search',
+    value: settingSearchQuery,
+    placeholder: t('settings.searchPlaceholder'),
+    'aria-label': t('settings.searchPlaceholder')
+  });
+  input.addEventListener('input', () => { settingSearchQuery = input.value; filterSettings(); });
+  return h('div', { class: 'settings-toolbar' },
+    h('div', { class: 'settings-toolbar-copy' },
+      h('span', { class: 'settings-toolbar-kicker', text: t('settings.searchKicker') }),
+      h('strong', { text: t('settings.searchHint') })),
+    h('label', { class: 'settings-search-wrap' }, input)
+  );
+}
+
+function settingsNav() {
+  const nav = h('nav', { class: 'settings-nav', 'aria-label': t('settings.navigation') });
+  for (const [id, labelKey] of [
+    ['overview', 'settings.sectionOverview'],
+    ['tags', 'settings.sectionTags'],
+    ['import', 'settings.sectionImport'],
+    ['backup', 'settings.sectionBackup'],
+    ['general', 'settings.sectionGeneral'],
+    ['about', 'settings.sectionAbout'],
+  ]) {
+    const item = h('button', { class: 'settings-nav-item', type: 'button', 'data-section-nav': id },
+      h('span', { class: 'settings-nav-dot' }), h('span', { text: t(labelKey) }));
+    item.addEventListener('click', () => {
+      activeSettingSection = id;
+      document.getElementById('settings-section-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      updateSettingsNav();
+    });
+    nav.append(item);
+  }
+  return nav;
+}
+
+function settingsSection(id, title, ...children) {
+  return h('section', { class: 'settings-section', id: 'settings-section-' + id, 'data-settings-section': id },
+    h('div', { class: 'settings-section-heading' }, h('h2', { text: title })),
+    grid(...children)
+  );
+}
+
+function filterSettings() {
+  const query = settingSearchQuery.trim().toLocaleLowerCase();
+  const sections = [...document.querySelectorAll('[data-settings-section]')];
+  for (const section of sections) {
+    const cards = [...section.querySelectorAll('.option-card')];
+    let visible = 0;
+    for (const optionCard of cards) {
+      const matches = !query || String(optionCard.dataset.search || '').toLocaleLowerCase().includes(query);
+      optionCard.hidden = !matches;
+      if (matches) visible++;
+    }
+    section.hidden = visible === 0;
+  }
+  const empty = document.getElementById('settings-search-empty');
+  const visibleSections = sections.filter((section) => !section.hidden).length;
+  if (empty) empty.hidden = !query || visibleSections > 0;
+  updateSettingsNav();
+}
+
+function updateSettingsNav() {
+  const sections = [...document.querySelectorAll('[data-settings-section]')];
+  document.querySelectorAll('[data-section-nav]').forEach((item) => {
+    const section = sections.find((entry) => entry.dataset.settingsSection === item.dataset.sectionNav);
+    item.classList.toggle('active', item.dataset.sectionNav === activeSettingSection && !section?.hidden);
+    item.disabled = !!section?.hidden;
+  });
+}
+
+function aboutCard() {
+  const version = chrome.runtime?.getManifest?.().version || '—';
+  return card(t('settings.aboutTitle'), t('settings.aboutHint'), h('div', { class: 'about-card-body' },
+    h('div', { class: 'about-identity' },
+      h('img', { src: 'logo.svg', alt: 'PageClip', class: 'about-logo' }),
+      h('div', {}, h('strong', { text: 'PageClip' }), h('span', { class: 'about-version', text: t('settings.version', { VERSION: version }) }))),
+    h('p', { class: 'about-summary', text: t('settings.aboutSummary') }),
+    h('div', { class: 'about-facts' },
+      h('div', {}, h('strong', { text: t('settings.aboutLocalTitle') }), h('span', { text: t('settings.aboutLocalText') })),
+      h('div', {}, h('strong', { text: t('settings.aboutBackupTitle') }), h('span', { text: t('settings.aboutBackupText') })),
+      h('div', {}, h('strong', { text: t('settings.aboutPermissionTitle') }), h('span', { text: t('settings.aboutPermissionText') }))),
+    h('div', { class: 'about-links' },
+      externalLink(t('settings.aboutGithub'), 'https://github.com/phishinqi/PageClip'),
+      externalLink(t('settings.aboutIssues'), 'https://github.com/phishinqi/PageClip/issues'),
+      externalLink(t('settings.aboutWebsite'), 'https://phishinqi.github.io/PageClip/'),
+      externalLink(t('settings.aboutStore'), 'https://chromewebstore.google.com/detail/pageclip/mnapcpmijebakicgdflohgnjmndhlneg'),
+      externalLink(t('settings.aboutPrivacy'), 'https://phishinqi.github.io/PageClip/privacy.html'),
+      externalLink(t('settings.aboutTerms'), 'https://phishinqi.github.io/PageClip/terms.html')
+    )
+  ), { search: t('settings.aboutTitle') + ' ' + t('settings.aboutHint') + ' ' + t('settings.aboutSummary') + ' ' + t('settings.aboutPermissionText'), full: true });
 }
 
 
@@ -81,7 +191,7 @@ function languageCard() {
   ]) select.append(h('option', { value: option[0], text: option[1] }));
   select.value = getLocalePreference();
   select.addEventListener('change', () => setLocalePreference(select.value));
-  return card(t('settings.language'), t('settings.languageHint'), h('div', { class: 'language-setting' }, select));
+  return card(t('settings.language'), t('settings.languageHint'), h('div', { class: 'language-setting' }, select), { search: t('settings.language') + ' ' + t('settings.languageHint') + ' ' + t('settings.localeZh') + ' ' + t('settings.localeEn') });
 }
 
 function cloudCard() {
@@ -102,7 +212,7 @@ function cloudCard() {
     (connected || authorizationRequired) ? autoBackupControls(authorizationRequired) : null,
     (connected || authorizationRequired) ? h('p', { class: 'desc recovery-note', text: t('settings.recoveryBinaryNote') }) : null,
     h('p', { class: 'desc cloud-note', text: t('settings.cloudNote') })
-  ));
+  ), { search: [t('settings.cloud'), t('settings.cloudHint'), t('settings.manualBackup'), t('settings.manualRestore'), t('settings.autoBackup'), t('settings.exportRecovery'), t('settings.importRecovery')].join(' ') });
 }
 
 function autoBackupControls(authorizationRequired = false) {
@@ -284,7 +394,7 @@ function tagManagerCard() {
       button(t('tags.delete'), 'danger', () => changeTagFromSettings({ from: entry.name }))
     ));
   }
-  return card(t('settings.tagManager'), t('settings.tagManagerHint'), list);
+  return card(t('settings.tagManager'), t('settings.tagManagerHint'), list, { search: [t('settings.tagManager'), t('settings.tagManagerHint'), t('tags.rename'), t('tags.merge'), t('tags.delete')].join(' ') });
 }
 
 // 改名时输入已有的标签名就是合并。
@@ -352,7 +462,7 @@ function rulesToDraft(rules) {
   return {
     autoApply: rules.autoApply,
     folder: rules.folder,
-    domains: rules.domains.map((rule) => ({ value: rule.domain, tags: rule.tags.join(', ') })),
+    domains: rules.domains.map((rule) => ({ value: rule.domain, match: rule.match, tags: rule.tags.join(', ') })),
     keywords: rules.keywords.map((rule) => ({ value: rule.keyword, tags: rule.tags.join(', ') })),
   };
 }
@@ -361,7 +471,7 @@ function draftToRules(draft) {
   return {
     autoApply: draft.autoApply,
     folder: draft.folder,
-    domains: draft.domains.map((rule) => ({ domain: rule.value, tags: normalizeTags(rule.tags) })),
+    domains: draft.domains.map((rule) => ({ domain: rule.value, match: rule.match, tags: normalizeTags(rule.tags) })),
     keywords: draft.keywords.map((rule) => ({ keyword: rule.value, tags: normalizeTags(rule.tags) })),
   };
 }
@@ -391,7 +501,7 @@ function tagRulesCard() {
       button(t('settings.tagRulesSave'), 'primary', saveRules),
       button(t('settings.tagRulesApply'), '', applyRulesNow)
     )
-  ));
+  ), { search: [t('settings.tagRules'), t('settings.tagRulesHint'), t('settings.tagRulesDomains'), t('settings.tagRulesKeywords'), t('settings.tagRuleMatchExact'), t('settings.tagRuleMatchSubdomains'), t('settings.tagRulesSave'), t('settings.tagRulesApply')].join(' '), full: true });
 }
 
 function ruleSection(kind, title, hint, placeholder) {
@@ -400,11 +510,19 @@ function ruleSection(kind, title, hint, placeholder) {
     const valueInput = h('input', { type: 'text', placeholder, spellcheck: 'false', 'aria-label': placeholder });
     valueInput.value = rule.value;
     valueInput.addEventListener('input', () => { rule.value = valueInput.value; });
+    const matchSelect = kind === 'domains' ? h('select', { class: 'tag-rule-match', 'aria-label': t('settings.tagRuleMatch') },
+      h('option', { value: 'subdomains', text: t('settings.tagRuleMatchSubdomains') }),
+      h('option', { value: 'exact', text: t('settings.tagRuleMatchExact') })) : null;
+    if (matchSelect) {
+      matchSelect.value = rule.match || 'subdomains';
+      matchSelect.addEventListener('change', () => { rule.match = matchSelect.value; });
+    }
     const tagsInput = h('input', { type: 'text', placeholder: t('settings.tagRuleTagsPlaceholder'), spellcheck: 'false', 'aria-label': t('settings.tagRuleTagsPlaceholder') });
     tagsInput.value = rule.tags;
     tagsInput.addEventListener('input', () => { rule.tags = tagsInput.value; });
     rows.append(h('div', { class: 'tag-rule-row' },
       valueInput,
+      matchSelect,
       h('span', { class: 'tag-rule-arrow', text: '→' }),
       tagsInput,
       button(t('button.delete'), 'danger', () => { rulesDraft[kind].splice(index, 1); render(); })
@@ -414,7 +532,7 @@ function ruleSection(kind, title, hint, placeholder) {
     h('strong', { text: title }),
     h('p', { class: 'desc', text: hint }),
     rows,
-    button(t('settings.tagRuleAdd'), '', () => { rulesDraft[kind].push({ value: '', tags: '' }); render(); })
+    button(t('settings.tagRuleAdd'), '', () => { rulesDraft[kind].push(kind === 'domains' ? { value: '', match: 'subdomains', tags: '' } : { value: '', tags: '' }); render(); })
   );
 }
 
@@ -459,10 +577,17 @@ async function applyRulesNow() {
 }
 
 function grid(...children) { return h('div', { class: 'options-grid' }, ...children); }
-function card(title, desc, body) { return h('section', { class: 'option-card' }, h('h2', { text: title }), h('p', { class: 'desc', text: desc }), body); }
+function card(title, desc, body, options = {}) {
+  const element = h('section', { class: 'option-card' + (options.full ? ' full' : '') }, h('h2', { text: title }), h('p', { class: 'desc', text: desc }), body);
+  const controls = [...element.querySelectorAll('button, input, select, textarea, a')];
+  const controlText = controls.map((control) => [control.textContent, control.getAttribute('placeholder'), control.getAttribute('aria-label'), control.getAttribute('title')].filter(Boolean).join(' ')).join(' ');
+  element.dataset.search = [title, desc, options.search || "", controlText].join(" ");
+  return element;
+}
 function actions(...children) { return h('div', { class: 'actions' }, ...children); }
 function stat(value, label) { return h('div', { class: 'stat' }, h('strong', { text: String(value) }), h('span', { text: label })); }
 function p(text) { return h('p', { class: 'desc', text }); }
+function externalLink(label, href) { return h('a', { class: 'about-link', href, target: '_blank', rel: 'noopener noreferrer' }, label); }
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
