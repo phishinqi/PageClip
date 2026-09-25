@@ -254,6 +254,23 @@ export async function removeItem(id) {
   });
 }
 
+// Keep browser cleanup inside the same data lock as deletion so an automatic
+// bookmark import cannot re-add an item between the two operations.
+export async function removeItems(ids, { beforeRemove } = {}) {
+  const selected = new Set(ids || []);
+  return mutate(async (data) => {
+    const items = data.items.filter((item) => selected.has(item.id));
+    if (!items.length) return { count: 0, recycle: null };
+    if (beforeRemove) await beforeRemove(items);
+    const indices = Object.fromEntries(data.items.map((item, index) => [item.id, index]));
+    data.items = data.items.filter((item) => !selected.has(item.id));
+    const recycle = createRecycleEntry(data, 'collection', items.length === 1 ? items[0].title : `${items.length} 项收藏`, {
+      items, indices: Object.fromEntries(items.map((item) => [item.id, indices[item.id]])),
+    });
+    return { count: items.length, recycle };
+  });
+}
+
 export async function setItemPinned(id, pinned) {
   return mutate((data) => {
     const item = data.items.find((it) => it.id === id);
@@ -525,7 +542,8 @@ export async function restoreRecycleEntry(id) {
       for (const item of items) {
         if (!item || existing.has(item.url)) continue;
         item.folderId = data.folders.some((folder) => folder.id === item.folderId) ? item.folderId : UNCATEGORIZED_ID;
-        const at = Number.isInteger(payload.index) ? Math.min(Math.max(payload.index, 0), data.items.length) : data.items.length;
+        const index = payload.indices?.[item.id] ?? payload.index;
+        const at = Number.isInteger(index) ? Math.min(Math.max(index, 0), data.items.length) : data.items.length;
         data.items.splice(at, 0, item);
         existing.add(item.url);
       }
@@ -640,10 +658,10 @@ export async function renameFolder(id, name) {
   });
 }
 
-// 删除文件夹：子文件夹一并删除，其中所有收藏移入「未分类」
-export async function removeFolder(id) {
+// 删除文件夹及其子文件夹，收藏一并进入回收站。
+export async function removeFolder(id, { beforeRemove } = {}) {
   if (id === UNCATEGORIZED_ID) throw new Error('「未分类」不能删除');
-  return mutate((data) => {
+  return mutate(async (data) => {
     const folder = data.folders.find((f) => f.id === id);
     if (!folder) throw new Error('文件夹不存在');
     const doomed = new Set([id]);
@@ -659,6 +677,7 @@ export async function removeFolder(id) {
     }
     const removedFolders = data.folders.filter((f) => doomed.has(f.id));
     const removedItems = data.items.filter((it) => doomed.has(it.folderId));
+    if (beforeRemove) await beforeRemove(removedItems);
     data.items = data.items.filter((it) => !doomed.has(it.folderId));
     data.folders = data.folders.filter((f) => !doomed.has(f.id));
     const recycle = createRecycleEntry(data, 'collection-folder', folder.name, {
