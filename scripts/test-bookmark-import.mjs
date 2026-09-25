@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { folderTagName, tagsForNewItem } from '../js/tag-model.js';
 
 const source = await readFile(new URL('../js/bookmark-import.js', import.meta.url), 'utf8');
 const executable = source.replace(/^import[^;]+;\s*/gm, '').replace(/^export\s+/gm, '')
@@ -17,6 +18,8 @@ const context = {
   genId: (() => { let id = 0; return (prefix) => `${prefix}_${++id}`; })(),
   UNCATEGORIZED_ID: 'f_uncategorized',
   isCollectableUrl: (url) => /^(https?:\/\/|file:\/\/)/.test(String(url)),
+  folderTagName,
+  tagsForNewItem,
   mutate: async (fn) => {
     const copy = structuredClone(data);
     const result = await fn(copy);
@@ -51,5 +54,18 @@ const beforeFailure = structuredClone(data);
 failSave = true;
 await assert.rejects(() => context.__bookmarkImport.mergeBrowserBookmarks([{ id: '0', children: [{ id: 'new-folder', title: 'Will fail', children: [{ id: 'new-item', title: 'Fail', url: 'https://fail.example' }] }] }]), /storage write failed/);
 assert.deepEqual(data, beforeFailure);
+failSave = false;
 
-console.log('Bookmark import tests passed: idempotent additive merge, safe paths, owned metadata, and failed-save atomicity');
+// 导入的新条目：并入同网址 Chrome 书签上已有的标签，并按规则加标签；根目录（书签栏）不产生文件夹标签。
+data.urlTags = { 'https://tagged.example/': ['旧标签'] };
+data.settings = { tagRules: { folder: true, domains: [{ domain: 'tagged.example', tags: ['域名'] }] } };
+await context.__bookmarkImport.mergeBrowserBookmarks([{ id: '0', children: [{ id: 'bar', title: '书签栏', children: [
+  { id: 'work', title: '工作', children: [{ id: 't1', title: 'Tagged', url: 'https://tagged.example/' }] },
+  { id: 't2', title: 'Top', url: 'https://top.tagged.example/' },
+] }] }]);
+assert.deepEqual(structuredClone(data.items.find((item) => item.url === 'https://tagged.example/').tags), ['旧标签', '域名', '工作']);
+assert.deepEqual(structuredClone(data.items.find((item) => item.url === 'https://top.tagged.example/').tags), ['域名']);
+assert.equal(data.urlTags['https://tagged.example/'], undefined);
+assert.deepEqual(data.items.find((item) => item.id === 'existing').tags, ['keep']);
+
+console.log('Bookmark import tests passed: idempotent additive merge, safe paths, owned metadata, failed-save atomicity, and imported tags');

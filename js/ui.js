@@ -54,6 +54,7 @@ const PATHS = {
   inbox: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.34 3-3 3s-3-1.34-3-3H5V5h14v10z',
   star: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
   info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+  tag: 'M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z',
 };
 
 export function icon(name, size = 16) {
@@ -183,20 +184,21 @@ export function toast(msg, kind = 'ok') {
   showToastContent(h('span', { class: `toast toast-${kind}` }, icon(kind === 'error' ? 'alert' : 'check'), h('span', { text: msg })));
 }
 
+// 带操作按钮（如撤销）的提示多停留一会儿，留出点击时间。
 export function toastAction(msg, label, onClick, kind = 'ok') {
   const action = h('button', { class: 'toast-action', text: label });
   action.addEventListener('click', () => { clearTimeout(toast._t); toastRoot?.replaceChildren(); onClick(); });
-  showToastContent(h('div', { class: `toast toast-${kind}` }, icon(kind === 'error' ? 'alert' : 'check'), h('span', { text: msg }), action));
+  showToastContent(h('div', { class: `toast toast-${kind}` }, icon(kind === 'error' ? 'alert' : 'check'), h('span', { text: msg }), action), 6000);
 }
 
-function showToastContent(content) {
+function showToastContent(content, duration = 3500) {
   if (!toastRoot) {
     toastRoot = h('div', { id: 'toast-root' });
     document.body.append(toastRoot);
   }
   toastRoot.replaceChildren(content);
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => toastRoot && toastRoot.replaceChildren(), 3500);
+  toast._t = setTimeout(() => toastRoot && toastRoot.replaceChildren(), duration);
 }
 
 // ———— 模态框 ————

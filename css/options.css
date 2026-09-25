@@ -80,3 +80,24 @@ input[type=file] { display:none; }
 .backup-history-row strong { display:block; }
 .backup-history-row small { display:block; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 @media (max-width:700px) { .backup-history-row { align-items:flex-start; flex-direction:column; } }
+
+.toast-with-action { display:flex; align-items:center; gap:10px; }
+.toast .toast-action { border:none; background:transparent; color:#b9c6ff; padding:0; font-weight:600; }
+.toast .toast-action:hover { background:transparent; text-decoration:underline; }
+.tag-manager-list { display:flex; flex-direction:column; gap:8px; max-height:360px; overflow:auto; }
+.tag-manager-row { display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+.tag-manager-row .meta { flex:1; min-width:0; }
+.tag-manager-row strong { display:block; color:var(--accent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tag-manager-row small { color:var(--muted); }
+.tag-manager-row button { padding:5px 9px; font-size:12px; }
+.tag-rules { display:flex; flex-direction:column; gap:12px; }
+.tag-rules-note { margin:0 !important; }
+.tag-rule-section { display:flex; flex-direction:column; gap:8px; padding:12px; border:1px solid var(--line); border-radius:9px; background:var(--bg); }
+.tag-rule-section .desc { margin:0; }
+.tag-rule-section > button { align-self:flex-start; }
+.tag-rule-rows { display:flex; flex-direction:column; gap:6px; }
+.tag-rule-row { display:flex; align-items:center; gap:6px; }
+.tag-rule-row input { flex:1; min-width:0; border:1px solid var(--line); border-radius:8px; padding:7px 9px; color:var(--text); background:var(--card); font:inherit; }
+.tag-rule-row button { flex:none; padding:6px 9px; font-size:12px; }
+.tag-rule-arrow { flex:none; color:var(--muted); }
+@media (max-width:700px) { .tag-manager-row { flex-wrap:wrap; } .tag-manager-row .meta { flex-basis:100%; } .tag-rule-row { flex-wrap:wrap; } .tag-rule-row input { flex-basis:calc(100% - 28px); } }

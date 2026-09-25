@@ -6,6 +6,7 @@ function backupContent(data) {
   return {
     folders: value.folders || [],
     items: value.items || [],
+    urlTags: value.urlTags || {},
     quickAccess: value.quickAccess || [],
     inbox: value.inbox || [],
     recycleBin: value.recycleBin || [],

@@ -25,6 +25,11 @@
         { id: 'i_4', url: 'https://caniuse.com/', title: 'Can I use - 浏览器兼容性查询', folderId: 'f_work', tags: ['工具'], note: '', createdAt: now - 6 * day, updatedAt: now - 6 * day, pinned: false, order: 1 },
         { id: 'i_5', url: 'https://web.dev/articles/rendering-performance', title: '渲染性能 | web.dev', folderId: 'f_read', tags: ['待读', '性能'], note: '周末精读', createdAt: now - 10 * day, updatedAt: now - 10 * day, pinned: false, order: 0 },
       ],
+      // 只在 Chrome 书签里的网址标签（与收藏按网址共享）。
+      urlTags: {
+        'https://news.ycombinator.com/': ['资讯'],
+        'https://source.chromium.org/': ['chrome', '源码'],
+      },
       quickAccess: [
         { id: 'q_mock', type: 'single', title: 'Chrome 扩展文档', url: 'https://developer.chrome.com/docs/extensions/', favIconUrl: '', createdAt: now - day, updatedAt: now - day, pinned: true, order: 0 },
         { id: 'qg_mock', type: 'group', title: '本地演示集合', tabs: [
@@ -181,6 +186,20 @@
         const { node } = bmFind(String(id));
         if (!node) throw new Error(`Bookmark not found: ${id}`);
         return dual([node], cb);
+      },
+      // 与 chrome.bookmarks.search 一致：对象参数 { url } 精确匹配网址，字符串按标题/网址包含匹配。
+      search(query, cb) {
+        const out = [];
+        const needle = typeof query === 'string' ? query.toLowerCase() : null;
+        bmWalk(bmTree, (node) => {
+          if (!node.url) return;
+          if (query && typeof query === 'object') {
+            if (query.url !== undefined && node.url === query.url) out.push(node);
+          } else if (needle && `${node.title}\n${node.url}`.toLowerCase().includes(needle)) {
+            out.push(node);
+          }
+        });
+        return dual(out, cb);
       },
       create(obj, cb) {
         const { node: parent } = bmFind(obj.parentId);

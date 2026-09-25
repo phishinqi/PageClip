@@ -1,5 +1,6 @@
 // 浏览器书签导入：只读取并复制到 PageClip，不修改 Chrome 原生书签。
 import { genId, isCollectableUrl, mutate, UNCATEGORIZED_ID } from './store.js';
+import { folderTagName, tagsForNewItem } from './tag-model.js';
 
 function pathKey(path) {
   // JSON 编码保留数组边界，避免标题包含 " / " 时与其他层级碰撞。
@@ -106,9 +107,12 @@ async function importFlatData(flat, mode = 'merge') {
         continue;
       }
       const folderId = source.folderPath.length ? folderMap.get(pathKey(source.folderPath)) || UNCATEGORIZED_ID : UNCATEGORIZED_ID;
+      // 路径只有一层时书签直接位于根目录（书签栏等），不产生文件夹标签。
+      const folderName = source.folderPath.length > 1 ? folderTagName(source.folderPath.at(-1)) : '';
+      const title = source.title.slice(0, 500);
       data.items.push({
-        id: genId('i'), url: source.url.slice(0, 2048), title: source.title.slice(0, 500), folderId,
-        tags: [], note: '', createdAt: source.createdAt, updatedAt: source.createdAt,
+        id: genId('i'), url: source.url.slice(0, 2048), title, folderId,
+        tags: tagsForNewItem(data, { url: source.url, title, folderName }), note: '', createdAt: source.createdAt, updatedAt: source.createdAt,
         pinned: false, order: data.items.length,
         chromeBookmarkIds: source.bookmarkId ? [source.bookmarkId] : [],
       });

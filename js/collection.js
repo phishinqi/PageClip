@@ -17,6 +17,7 @@ import {
   UNCATEGORIZED_ID,
   collectTags,
   moveItem,
+  moveItems,
   moveFolder,
   updateItem,
   removeItems,
@@ -31,6 +32,7 @@ import { createDnd } from './tree.js';
 import { t } from './i18n.js';
 import { buildFolderStats, folderScope } from './collection-model.js';
 import { removeChromeBookmarksForItems } from './chrome-bookmark-sync.js';
+import { createTagInput, openBatchTagEditor, renameTagGlobally, mergeTagGlobally, deleteTagGlobally } from './tag-editor.js';
 
 export function createCollectionTab(ctx) {
   const { state } = ctx;
@@ -201,7 +203,8 @@ export function createCollectionTab(ctx) {
         const items = [];
         if (!system) items.push({ label: '新建子文件夹', icon: 'folderPlus', onClick: () => newFolderDialog(id) });
         items.push(
-          { label: '打开文件夹收藏', icon: 'folder', onClick: () => { state.folderId = id; renderAll(); } }
+          { label: '打开文件夹收藏', icon: 'folder', onClick: () => { state.folderId = id; renderAll(); } },
+          { label: t('tags.editFolder'), icon: 'tag', onClick: () => editFolderTags(id) }
         );
         if (!system) {
           items.push(
@@ -400,6 +403,7 @@ export function createCollectionTab(ctx) {
       h('span', { class: 'selection-count', text: t('selection.count', { COUNT: selectedItems.size }) }),
       h('button', { class: 'text-btn', onclick: () => selectVisible(data) }, '全选'),
       h('button', { class: 'text-btn', onclick: () => { selectedItems.clear(); selectionAnchor = null; renderAll(); } }, t('button.clearShort')),
+      h('button', { class: 'text-btn', disabled: !selectedItems.size, onclick: () => editItemTags([...selectedItems]) }, t('tags.button')),
       h('button', { class: 'text-btn selection-delete', disabled: deleting || !selectedItems.size, onclick: () => deleteItems([...selectedItems]) }, t('selection.delete'))
     ) : null;
     const headerChildren = [
@@ -504,6 +508,16 @@ export function createCollectionTab(ctx) {
         else state.tagFilter.add(tag);
         renderAll();
       });
+      chip.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const options = { getData: ctx.getData, onDone: afterGlobalTagChange };
+        contextMenu(e.clientX, e.clientY, [
+          { label: t('tags.rename'), icon: 'edit', onClick: () => renameTagGlobally(tag, options) },
+          { label: t('tags.merge'), icon: 'swap', onClick: () => mergeTagGlobally(tag, options) },
+          { sep: true },
+          { label: t('tags.delete'), icon: 'trash', danger: true, onClick: () => deleteTagGlobally(tag, options) },
+        ]);
+      });
       chips.append(chip);
     }
     if (state.tagFilter.size) {
@@ -600,6 +614,7 @@ export function createCollectionTab(ctx) {
       contextMenu(e.clientX, e.clientY, [
         { label: t('collection.openNewTab'), icon: 'open', onClick: () => openUrl(item.url, { ctrlKey: true }) },
         { label: t('button.edit'), icon: 'edit', onClick: () => editItemDialog(item) },
+        { label: inMultiSelection(item.id) ? t('tags.editSelected') : t('tags.editOne'), icon: 'tag', onClick: () => editItemTags(inMultiSelection(item.id) ? [...selectedItems] : [item.id]) },
         { label: item.pinned ? t('button.unpin') : t('button.pin'), icon: 'pin', onClick: () => togglePin(item) },
         { label: t('collection.moveTo'), icon: 'swap', onClick: () => moveItemPicker(item) },
         { sep: true },
@@ -648,6 +663,41 @@ export function createCollectionTab(ctx) {
     await setItemPinned(item.id, !item.pinned);
     await ctx.refresh();
     toast(item.pinned ? t('collection.unpin') : t('collection.pin'));
+  }
+
+  // ———— 标签批量编辑 ————
+
+  function inMultiSelection(itemId) {
+    return selectedItems.has(itemId) && selectedItems.size > 1;
+  }
+
+  function editItemTags(ids) {
+    const data = ctx.getData();
+    const chosen = new Set(ids);
+    const urls = data.items.filter((item) => chosen.has(item.id)).map((item) => item.url);
+    openBatchTagEditor({ urls, data, onDone: () => ctx.refresh() });
+  }
+
+  // 文件夹范围与列表一致：包含子文件夹里的收藏。
+  function editFolderTags(folderId) {
+    const data = ctx.getData();
+    const scope = folderScope(folderId, buildFolderStats(data));
+    const urls = data.items.filter((item) => !scope || scope.has(item.folderId)).map((item) => item.url);
+    if (!urls.length) {
+      toast(t('tags.folderEmpty'), 'error');
+      return;
+    }
+    openBatchTagEditor({ urls, data, onDone: () => ctx.refresh() });
+  }
+
+  // 全局改名 / 删除后同步标签筛选，避免筛选停在已经不存在的标签上。
+  async function afterGlobalTagChange(change) {
+    const hit = change && [...state.tagFilter].find((name) => name.toLowerCase() === String(change.from).toLowerCase());
+    if (hit) {
+      state.tagFilter.delete(hit);
+      if (change.to) state.tagFilter.add(change.to);
+    }
+    await ctx.refresh();
   }
 
   async function syncChromeBookmarks(items) {
@@ -721,8 +771,6 @@ export function createCollectionTab(ctx) {
 
   function editItemDialog(item) {
     const data = ctx.getData();
-    const allTags = [...collectTags(data).keys()];
-    const tags = [...(item.tags || [])];
     const folderOptions = [
       { value: UNCATEGORIZED_ID, label: '未分类' },
       ...flattenFolders(data.folders).map((f) => ({
@@ -742,43 +790,7 @@ export function createCollectionTab(ctx) {
     const noteInput = h('textarea', { rows: 4, placeholder: t('collection.reasonPlaceholder') });
     noteInput.value = item.note || '';
 
-    const chipWrap = h('div', { class: 'chip-editor' });
-    const tagInput = h('input', { type: 'text', placeholder: t('collection.tagsPlaceholder'), list: 'tag-suggest', spellcheck: 'false' });
-    const dl = h('datalist', { id: 'tag-suggest' });
-    for (const t of allTags) dl.append(h('option', { value: t }));
-    chipWrap.append(dl);
-    chipWrap.append(tagInput);
-
-    function renderChips() {
-      [...chipWrap.querySelectorAll('.chip')].forEach((c) => c.remove());
-      for (const tagName of tags) {
-        const chip = h(
-          'span',
-          { class: 'chip' },
-          `#${tagName}`,
-          h('button', { class: 'chip-x', title: t('collection.remove') }, icon('close', 11))
-        );
-        chip.querySelector('.chip-x').addEventListener('click', () => {
-          tags.splice(tags.indexOf(tagName), 1);
-          renderChips();
-        });
-        if (tagInput.parentNode === chipWrap) chipWrap.insertBefore(chip, tagInput);
-        else chipWrap.append(chip);
-      }
-    }
-    tagInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ',' || e.key === '，') {
-        e.preventDefault();
-        const v = tagInput.value.trim().replace(/^#+/, '');
-        if (v && !tags.some((t) => t.toLowerCase() === v.toLowerCase()) && tags.length < 12) tags.push(v);
-        tagInput.value = '';
-        renderChips();
-      } else if (e.key === 'Backspace' && !tagInput.value && tags.length) {
-        tags.pop();
-        renderChips();
-      }
-    });
-    renderChips();
+    const tagInput = createTagInput({ tags: item.tags || [], suggestions: [...collectTags(data).keys()] });
 
     const body = h(
       'div',
@@ -786,7 +798,8 @@ export function createCollectionTab(ctx) {
       formField(t('collection.title'), titleInput),
       formField(t('collection.url'), urlInput),
       formField(t('collection.folder'), folderSelect),
-      formField(t('collection.tags'), chipWrap),
+      // 标签区域含按钮，用 div 而不是 label，避免点击文字时误触第一个标签的删除键。
+      h('div', { class: 'form-field' }, h('span', { class: 'form-label', text: t('collection.tags') }), tagInput.el),
       formField(t('collection.note'), noteInput)
     );
 
@@ -808,13 +821,16 @@ export function createCollectionTab(ctx) {
           kind: 'primary',
           onClick: async (close) => {
             try {
+              // 改了网址但 Chrome 里还有书签在用旧网址时，给旧网址留一份标签（标签按网址共享）。
+              const urlChanged = urlInput.value.trim() !== item.url;
+              const keepOldUrlTags = urlChanged && await hasChromeBookmark(item.url);
               await updateItem(item.id, {
                 title: titleInput.value,
                 url: urlInput.value,
                 folderId: folderSelect.value,
-                tags,
+                tags: tagInput.getTags(),
                 note: noteInput.value,
-              });
+              }, { keepOldUrlTags });
               close();
               await ctx.refresh();
               toast('已保存');
@@ -829,6 +845,14 @@ export function createCollectionTab(ctx) {
 
   function formField(label, control) {
     return h('label', { class: 'form-field' }, h('span', { class: 'form-label', text: label }), control);
+  }
+
+  async function hasChromeBookmark(url) {
+    try {
+      return (await chrome.bookmarks.search({ url })).length > 0;
+    } catch {
+      return false;
+    }
   }
 
   // ———— 文件夹操作 ————
@@ -1019,9 +1043,12 @@ export function createCollectionTab(ctx) {
     onDrop: async (drag, row, zone) => {
       if (drag.kind === 'col-item') {
         if (row.dataset.kind === 'col-all') return;
-        await moveItem(drag.id, { folderId: row.dataset.id });
+        // 多选拖动时 drag.ids 是全部选中项，要一起移动。
+        const ids = drag.ids || [drag.id];
+        const result = await moveItems(ids, { folderId: row.dataset.id });
+        if (ids.length > 1) selectedItems.clear();
         await ctx.refresh();
-        toast(t('collection.movedTo', { TITLE: nameOf(row.dataset.id, ctx.getData()) }));
+        toast(t('collection.movedTo', { TITLE: nameOf(result.folderId, ctx.getData()) }));
         return;
       }
       if (zone === 'into') {

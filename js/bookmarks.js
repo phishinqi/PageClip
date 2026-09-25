@@ -19,6 +19,9 @@ import {
   nextBookmarkPageSize,
   reconcileBookmarkPageSizes,
 } from './bookmark-pagination.js';
+import { setBookmarkTags } from './store.js';
+import { buildTagIndex, countTags, urlKey } from './tag-model.js';
+import { createTagInput, openBatchTagEditor } from './tag-editor.js';
 
 export function createBookmarksTab(ctx) {
   let loaded = false;
@@ -33,6 +36,9 @@ export function createBookmarksTab(ctx) {
   let selectionMode = false;
   let deleting = false;
   let loadObserver = null;
+  // Chrome 书签的标签来自 PageClip 数据（按网址与收藏共享）。
+  let tagIndex = new Map();
+  let tagSignature = '';
 
   const scroll = ctx.scrollEl;
 
@@ -141,9 +147,31 @@ export function createBookmarksTab(ctx) {
 
   // ———— 渲染 ————
 
+  function currentTagIndex() {
+    return buildTagIndex(ctx.getData?.() || {});
+  }
+
+  function tagSignatureFor(index) {
+    if (!index.size) return '';
+    const parts = [];
+    for (const node of byId.values()) {
+      const tags = node.url ? index.get(urlKey(node.url)) : null;
+      if (tags?.length) parts.push(`${node.id}:${tags.join(',')}`);
+    }
+    return parts.join('|');
+  }
+
+  // PageClip 数据变化时调用：只有 Chrome 书签上的标签真的变了才重绘书签树。
+  function refreshTags() {
+    if (!loaded || !rootTree) return;
+    if (tagSignatureFor(currentTagIndex()) !== tagSignature) render();
+  }
+
   function render({ focusId = null, scrollTop = scroll.scrollTop } = {}) {
     loadObserver?.disconnect();
     loadObserver = null;
+    tagIndex = currentTagIndex();
+    tagSignature = tagSignatureFor(tagIndex);
     const sentinels = [];
     scroll.replaceChildren();
     if (!rootTree) return;
@@ -266,7 +294,7 @@ export function createBookmarksTab(ctx) {
 
     const content = isFolder
       ? h('span', { class: 'bookmark-row-content' }, title)
-      : h('span', { class: 'bookmark-row-content' }, title, urlMeta);
+      : h('span', { class: 'bookmark-row-content' }, title, urlMeta, tagChips(tagIndex.get(urlKey(node.url)) || []));
     row.append(caret, ico, content);
     if (count) row.append(count);
     row.append(actions);
@@ -282,19 +310,19 @@ export function createBookmarksTab(ctx) {
     });
     if (!isFolder) {
       row.addEventListener('dblclick', (e) => {
-        if (e.target.closest('.row-actions')) return;
+        if (e.target.closest('.row-actions, .mini-tag')) return;
         openUrl(node.url, { newTab: true });
       });
     }
     row.addEventListener('keydown', (e) => {
-      if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.row-actions')) {
+      if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.row-actions, .mini-tag')) {
         e.preventDefault();
         if (isFolder) toggleExpand(node.id);
         else openUrl(node.url, { newTab: true });
       }
     });
     row.addEventListener('auxclick', (e) => {
-      if (!isFolder && e.button === 1) {
+      if (!isFolder && e.button === 1 && !e.target.closest('.mini-tag')) {
         e.preventDefault();
         openUrl(node.url, { newTab: true });
       }
@@ -306,6 +334,24 @@ export function createBookmarksTab(ctx) {
     return row;
   }
 
+  // 点标签就在顶部搜索“#标签”，结果同时包含收藏和 Chrome 书签。
+  function tagChips(tags) {
+    if (!tags.length) return null;
+    const wrap = h('span', { class: 'card-tags bm-tags' });
+    for (const name of tags) {
+      wrap.append(h('button', {
+        class: 'mini-tag',
+        type: 'button',
+        text: `#${name}`,
+        onclick: (e) => {
+          e.stopPropagation();
+          ctx.setSearch?.(`#${name}`);
+        },
+      }));
+    }
+    return wrap;
+  }
+
   function actBtn(name, title, onClick) {
     return h('button', { class: 'act-btn', title, onclick: (e) => { e.stopPropagation(); onClick(); } }, icon(name, 14));
   }
@@ -315,6 +361,7 @@ export function createBookmarksTab(ctx) {
       const items = [
         { label: '新建书签', icon: 'plus', onClick: () => newBookmark(node.id) },
         { label: '新建子文件夹', icon: 'folderPlus', onClick: () => newFolder(node.id) },
+        { label: t('tags.editFolder'), icon: 'tag', onClick: () => editFolderTags(node) },
         { sep: true },
       ];
       if (!perm) {
@@ -326,13 +373,40 @@ export function createBookmarksTab(ctx) {
       }
       return items;
     }
+    const multi = selectedBookmarks.has(node.id) && selectedBookmarks.size > 1;
     return [
       { label: '在新标签页打开', icon: 'open', onClick: () => openUrl(node.url, { ctrlKey: true }) },
       { label: '编辑', icon: 'edit', onClick: () => editBookmark(node) },
+      { label: multi ? t('tags.editSelected') : t('tags.editOne'), icon: 'tag', onClick: () => editBookmarkTags(multi ? [...selectedBookmarks] : [node.id]) },
       { label: '移动到…', icon: 'swap', onClick: () => moveToPicker(node) },
       { sep: true },
       { label: '删除', icon: 'trash', danger: true, onClick: () => removeNode(node) },
     ];
+  }
+
+  // ———— 标签 ————
+
+  function editBookmarkTags(ids) {
+    const urls = ids.map((id) => byId.get(id)?.url).filter(Boolean);
+    openBatchTagEditor({ urls, data: ctx.getData?.() || {}, onDone: () => ctx.refresh?.() });
+  }
+
+  function folderUrls(node, out = []) {
+    for (const child of node.children || []) {
+      if (child.url) out.push(child.url);
+      else folderUrls(child, out);
+    }
+    return out;
+  }
+
+  // 范围包含子文件夹里的书签。
+  function editFolderTags(node) {
+    const urls = folderUrls(node);
+    if (!urls.length) {
+      toast(t('tags.folderEmpty'), 'error');
+      return;
+    }
+    openBatchTagEditor({ urls, data: ctx.getData?.() || {}, onDone: () => ctx.refresh?.() });
   }
 
   function selectBookmark(id, event) {
@@ -377,6 +451,7 @@ export function createBookmarksTab(ctx) {
         syncBookmarkSelection();
       } }, t('selection.selectLoaded')),
       h('button', { class: 'text-btn', onclick: () => { selectedBookmarks.clear(); selectedBookmarkAnchor = null; syncBookmarkSelection(); } }, t('button.clearShort')),
+      h('button', { class: 'text-btn', disabled: !selectedBookmarks.size, onclick: () => editBookmarkTags([...selectedBookmarks]) }, t('tags.button')),
       h('button', { class: 'text-btn selection-delete', disabled: deleting || !selectedBookmarks.size,
         onclick: () => deleteSelectedBookmarks() }, t('selection.delete'))
     );
@@ -457,19 +532,64 @@ export function createBookmarksTab(ctx) {
     toast('已创建文件夹');
   }
 
-  async function editBookmark(node) {
-    const v = await formDialog({
-      title: '编辑书签',
-      fields: [
-        { key: 'title', label: '名称', value: node.title },
-        { key: 'url', label: '网址', value: node.url },
-      ],
-      validate: (vals) => (vals.url ? null : '网址不能为空'),
+  function editBookmark(node) {
+    const data = ctx.getData?.() || {};
+    const titleInput = h('input', { type: 'text', spellcheck: 'false' });
+    titleInput.value = node.title || '';
+    const urlInput = h('input', { type: 'text', spellcheck: 'false' });
+    urlInput.value = node.url || '';
+    const tagInput = createTagInput({
+      tags: buildTagIndex(data).get(urlKey(node.url)) || [],
+      suggestions: countTags(data).map((entry) => entry.name),
     });
-    if (!v) return;
-    await chrome.bookmarks.update(node.id, { title: v.title || node.title, url: normalizeUrl(v.url) });
-    await reload();
-    toast('已保存');
+    const body = h('div', { class: 'form' },
+      h('label', { class: 'form-field' }, h('span', { class: 'form-label', text: t('bookmarks.name') }), titleInput),
+      h('label', { class: 'form-field' }, h('span', { class: 'form-label', text: t('bookmarks.url') }), urlInput),
+      // 标签区域含按钮，用 div 而不是 label，避免点击文字时误触第一个标签的删除键。
+      h('div', { class: 'form-field' }, h('span', { class: 'form-label', text: t('collection.tags') }), tagInput.el)
+    );
+    let saving = false;
+    const modal = showModal({
+      title: t('bookmarks.editTitle'),
+      body,
+      buttons: [
+        { label: t('button.cancel'), kind: 'ghost' },
+        {
+          label: t('button.save'),
+          kind: 'primary',
+          onClick: async (close) => {
+            const url = normalizeUrl(urlInput.value);
+            if (!url) {
+              toast(t('bookmarks.urlRequired'), 'error');
+              return;
+            }
+            if (saving) return;
+            saving = true;
+            try {
+              await chrome.bookmarks.update(node.id, { title: titleInput.value.trim() || node.title, url });
+              // 标签按网址共享：旧网址还有别的书签在用时保留它的标签。
+              const previousUrlInUse = [...byId.values()].some((other) => other.id !== node.id && other.url && urlKey(other.url) === urlKey(node.url));
+              await setBookmarkTags({ url, tags: tagInput.getTags(), previousUrl: node.url, previousUrlInUse });
+              close();
+              await reload();
+              await ctx.refresh?.();
+              toast(t('bookmarks.saved'));
+            } catch (error) {
+              toast(error.message || String(error), 'error');
+            } finally {
+              saving = false;
+            }
+          },
+        },
+      ],
+    });
+    for (const input of [titleInput, urlInput]) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        modal.card.querySelector('.btn-primary')?.click();
+      });
+    }
   }
 
   async function renameFolder(node) {
@@ -623,15 +743,19 @@ export function createBookmarksTab(ctx) {
   }
 
   // ———— 搜索（供全局搜索调用） ————
+  // 普通词匹配标题、网址和标签；#标签 只匹配标签（与收藏的搜索规则一致）。
 
-  function searchAll(textTokens) {
-    if (!textTokens.length) return [];
+  function searchAll(textTokens, tagTokens = []) {
+    if (!textTokens.length && !tagTokens.length) return [];
+    const index = currentTagIndex();
     const out = [];
     for (const node of byId.values()) {
       if (!node.url) continue;
-      const hay = `${node.title}\n${node.url}`.toLowerCase();
-      if (textTokens.every((tk) => hay.includes(tk))) out.push({ node, path: pathOf(node) });
-      if (out.length >= 50) break;
+      const tags = index.get(urlKey(node.url)) || [];
+      const lower = tags.map((tag) => tag.toLowerCase());
+      if (!tagTokens.every((token) => lower.some((tag) => tag.includes(token)))) continue;
+      const hay = `${node.title}\n${node.url}\n${lower.join('\n')}`.toLowerCase();
+      if (textTokens.every((tk) => hay.includes(tk))) out.push({ node, path: pathOf(node), tags });
     }
     return out;
   }
@@ -645,5 +769,5 @@ export function createBookmarksTab(ctx) {
     render();
   }
 
-  return { header, scroll, reload, ensureLoaded, searchAll };
+  return { header, scroll, reload, ensureLoaded, searchAll, refreshTags };
 }

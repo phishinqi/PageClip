@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { bookmarkFolderName, hasActiveRules, normalizeTagRules } from '../js/tag-model.js';
 
 const source = await readFile(new URL('../background.js', import.meta.url), 'utf8');
 const executable = source.replace(/^import[^;]+;\s*/gm, '');
-const events = Object.fromEntries(['onCreated', 'onChanged', 'onMoved', 'onChildrenReordered', 'onImportEnded', 'onRemoved'].map((key) => [key, { listeners: [], addListener(fn) { this.listeners.push(fn); } }]));
+const events = Object.fromEntries(['onCreated', 'onChanged', 'onMoved', 'onChildrenReordered', 'onImportEnded', 'onRemoved', 'onImportBegan'].map((key) => [key, { listeners: [], addListener(fn) { this.listeners.push(fn); } }]));
 const alarmEvent = { listeners: [], addListener(fn) { this.listeners.push(fn); } };
 const notificationEvent = { listeners: [], addListener(fn) { this.listeners.push(fn); } };
 const storageEvent = { listeners: [], addListener(fn) { this.listeners.push(fn); } };
@@ -23,9 +24,24 @@ const notificationClears = [];
 let importCalls = 0;
 let automaticBackupCalls = 0;
 let automaticBackupResult = null;
+const tagRuleCalls = [];
+const pruneCalls = [];
+const bookmarkNodes = new Map([
+  ['55', { id: '55', parentId: '11', url: 'https://example.com/a', title: 'A' }],
+  ['11', { id: '11', parentId: '1', title: '工作' }],
+]);
 const context = {
   chrome: {
-    bookmarks: { ...events, async getTree() { return [{ id: '0', children: [] }]; } },
+    bookmarks: {
+      ...events,
+      async getTree() { return [{ id: '0', children: [] }]; },
+      async get(ids) {
+        return (Array.isArray(ids) ? ids : [ids]).map((id) => {
+          if (!bookmarkNodes.has(id)) throw new Error('missing bookmark ' + id);
+          return bookmarkNodes.get(id);
+        });
+      },
+    },
     alarms: {
       create(name, info) { alarms.push([name, info]); },
       clear: async (name) => { clears.push(name); return true; },
@@ -51,7 +67,10 @@ const context = {
   ensureDataInitialized: async () => {}, pruneRecycleBin: async () => {}, initI18n: async () => {}, t: (key) => key, getMessages: () => ({}),
   runAutomaticBackup: async () => { automaticBackupCalls++; return automaticBackupResult; }, AUTO_BACKUP_ALARM: 'backup', AUTO_BACKUP_DEBOUNCE_MS: 10 * 1000,
   hasBackupRelevantChange: (before, after) => JSON.stringify({ items: before?.items || [], folders: before?.folders || [], quickAccess: before?.quickAccess || [], inbox: before?.inbox || [], recycleBin: before?.recycleBin || [] }) !== JSON.stringify({ items: after?.items || [], folders: after?.folders || [], quickAccess: after?.quickAccess || [], inbox: after?.inbox || [], recycleBin: after?.recycleBin || [] }),
-  setTimeout, Promise, structuredClone, console, Date,
+  applyTagRulesToBookmarks: async (entries) => { tagRuleCalls.push(entries); return { changed: entries.length }; },
+  pruneUrlTags: async (urls) => { pruneCalls.push(urls); return { changed: 0 }; },
+  bookmarkFolderName, hasActiveRules, normalizeTagRules,
+  setTimeout, clearTimeout, Promise, structuredClone, console, Date,
 };
 vm.createContext(context);
 vm.runInContext(executable, context, { filename: 'background.js' });
@@ -124,4 +143,27 @@ assert.equal(notificationClears.includes('pageclip-auto-backup-reconnect'), true
 assert.equal(createdTabs.some((options) => options.url === 'options.html'), true);
 assert.equal(clears.includes('pageclip-auto-backup-reconnect'), false);
 
-console.log('Automation controller tests passed: gated bookmark events, backup debounce, and OAuth recovery notification');
+// 标签规则：Chrome 导入期间新建的书签先排队，导入结束后统一处理；关闭自动执行时不处理。
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+data.settings.tagRules = { domains: [{ domain: 'example.com', tags: ['ex'] }] };
+events.onImportBegan.listeners[0]();
+events.onCreated.listeners[0]('55', bookmarkNodes.get('55'));
+await wait(900);
+assert.equal(tagRuleCalls.length, 0);
+events.onImportEnded.listeners[0]();
+await wait(900);
+assert.deepEqual(structuredClone(tagRuleCalls), [[{ url: 'https://example.com/a', title: 'A', folderName: '工作' }]]);
+data.settings.tagRules = { autoApply: false, domains: [{ domain: 'example.com', tags: ['ex'] }] };
+events.onCreated.listeners[0]('55', bookmarkNodes.get('55'));
+await wait(900);
+assert.equal(tagRuleCalls.length, 1);
+
+// 删除书签或文件夹时，把其中所有网址交给清理逻辑。
+events.onRemoved.listeners[0]('77', { parentId: '1', index: 0, node: { id: '77', title: 'Folder', children: [
+  { id: '78', url: 'https://gone.example/' },
+  { id: '79', title: 'Sub', children: [{ id: '80', url: 'https://gone-too.example/' }] },
+] } });
+await wait(0);
+assert.deepEqual(structuredClone(pruneCalls), [['https://gone.example/', 'https://gone-too.example/']]);
+
+console.log('Automation controller tests passed: gated bookmark events, backup debounce, OAuth recovery notification, and bookmark tag rules');
