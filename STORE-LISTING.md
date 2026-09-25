@@ -7,7 +7,12 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Last Web Store package: release/PageClip-v1.7.0.zip
+- Last Web Store package: release/PageClip-v1.7.1.zip
+
+## 1.7.1 release notes
+
+- Settings now uses a compact workspace with category navigation and search, plus an About section with version, project, privacy, and permission information.
+- Domain tag rules can independently match only the configured host or include all subdomains; existing rules keep their previous subdomain behavior.
 
 ## 1.7.0 release notes
 

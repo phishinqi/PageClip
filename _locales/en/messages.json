@@ -763,14 +763,24 @@
   "settings_bookmarkAutoImportLast": {
     "message": "Last import: $TIME$ · added $ADDED$ · duplicate URLs skipped $DUPLICATES$",
     "placeholders": {
-      "time": { "content": "$1" },
-      "added": { "content": "$2" },
-      "duplicates": { "content": "$3" }
+      "time": {
+        "content": "$1"
+      },
+      "added": {
+        "content": "$2"
+      },
+      "duplicates": {
+        "content": "$3"
+      }
     }
   },
   "settings_bookmarkAutoImportError": {
     "message": "Last import failed: $ERROR$",
-    "placeholders": { "error": { "content": "$1" } }
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
   },
   "settings_bookmarkAutoImportRetry": {
     "message": "Retry now"
@@ -778,9 +788,15 @@
   "settings_bookmarkAutoImportDone": {
     "message": "Import complete: added $ADDED$, duplicates $DUPLICATES$, invalid $INVALID$",
     "placeholders": {
-      "added": { "content": "$1" },
-      "duplicates": { "content": "$2" },
-      "invalid": { "content": "$3" }
+      "added": {
+        "content": "$1"
+      },
+      "duplicates": {
+        "content": "$2"
+      },
+      "invalid": {
+        "content": "$3"
+      }
     }
   },
   "settings_bookmarkAutoImportSaved": {
@@ -1252,5 +1268,238 @@
   },
   "content_iframeTitle": {
     "message": "PageClip web sidebar"
+  },
+  "settings_sectionOverview": {
+    "message": "Overview"
+  },
+  "settings_sectionTags": {
+    "message": "Tags"
+  },
+  "settings_sectionImport": {
+    "message": "Import & export"
+  },
+  "settings_sectionBackup": {
+    "message": "Backup & data"
+  },
+  "settings_sectionGeneral": {
+    "message": "General"
+  },
+  "settings_sectionAbout": {
+    "message": "About"
+  },
+  "settings_navigation": {
+    "message": "Settings sections"
+  },
+  "settings_searchKicker": {
+    "message": "QUICK FIND"
+  },
+  "settings_searchHint": {
+    "message": "Search settings, actions, and notes"
+  },
+  "settings_searchPlaceholder": {
+    "message": "Search settings…"
+  },
+  "settings_searchEmpty": {
+    "message": "No matching settings found. Try another keyword."
+  },
+  "settings_tagManager": {
+    "message": "Tag manager"
+  },
+  "settings_tagManagerHint": {
+    "message": "Review, rename, merge, or delete PageClip tags; automatic rules are updated too."
+  },
+  "settings_tagManagerEmpty": {
+    "message": "No tags yet"
+  },
+  "settings_tagCount": {
+    "message": "$COUNT$ URLs",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_tagRules": {
+    "message": "Automatic tag rules"
+  },
+  "settings_tagRulesHint": {
+    "message": "Add tags automatically from domains, title or URL keywords, and folders. Rules only add tags."
+  },
+  "settings_tagRulesAuto": {
+    "message": "Run rules when saving new bookmarks"
+  },
+  "settings_tagRulesFolder": {
+    "message": "Add the current folder name as a tag"
+  },
+  "settings_tagRulesFolderHint": {
+    "message": "Only the nearest user folder is used; system folders and imported root folders are ignored."
+  },
+  "settings_tagRulesDomains": {
+    "message": "Domain rules"
+  },
+  "settings_tagRulesDomainsHint": {
+    "message": "Enter example.com or docs.example.com, then choose whether subdomains are included."
+  },
+  "settings_tagRulesKeywords": {
+    "message": "Keyword rules"
+  },
+  "settings_tagRulesKeywordsHint": {
+    "message": "Add tags when a title or URL contains the keyword, case-insensitively."
+  },
+  "settings_tagRuleDomainPlaceholder": {
+    "message": "Domain, for example docs.example.com"
+  },
+  "settings_tagRuleKeywordPlaceholder": {
+    "message": "Keyword, for example react"
+  },
+  "settings_tagRuleMatch": {
+    "message": "Domain match scope"
+  },
+  "settings_tagRuleMatchSubdomains": {
+    "message": "Include all subdomains"
+  },
+  "settings_tagRuleMatchExact": {
+    "message": "This host only"
+  },
+  "settings_tagRuleTagsPlaceholder": {
+    "message": "Tags to add, separated by commas"
+  },
+  "settings_tagRuleAdd": {
+    "message": "Add rule"
+  },
+  "settings_tagRulesSave": {
+    "message": "Save rules"
+  },
+  "settings_tagRulesApply": {
+    "message": "Apply to existing bookmarks"
+  },
+  "settings_tagRulesSaved": {
+    "message": "Tag rules saved"
+  },
+  "settings_tagRulesIgnored": {
+    "message": "$COUNT$ invalid rules ignored",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_tagRulesUnsaved": {
+    "message": "Save the tag rules first"
+  },
+  "settings_tagRulesEmpty": {
+    "message": "There are no tag rules to apply"
+  },
+  "settings_tagRulesApplyTitle": {
+    "message": "Apply tag rules"
+  },
+  "settings_tagRulesApplyConfirm": {
+    "message": "Add tags to $COUNT$ URLs. Continue?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_tagRulesApplyLimited": {
+    "message": "$COUNT$ URLs reached the tag limit before all tags could be added",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_tagRulesApplyNone": {
+    "message": "No tags need updating"
+  },
+  "settings_tagRulesApplied": {
+    "message": "Updated $COUNT$ URLs",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_aboutTitle": {
+    "message": "About PageClip"
+  },
+  "settings_aboutHint": {
+    "message": "Version, project links, data boundaries, and privacy information."
+  },
+  "settings_version": {
+    "message": "Version $VERSION$",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_aboutSummary": {
+    "message": "PageClip is a local-first browser workflow tool for saving pages, organizing tags and folders, keeping an Inbox, and optionally creating client-side encrypted backups."
+  },
+  "settings_aboutLocalTitle": {
+    "message": "Local first"
+  },
+  "settings_aboutLocalText": {
+    "message": "Collections, tags, folders, and settings stay in this browser's chrome.storage.local by default."
+  },
+  "settings_aboutBackupTitle": {
+    "message": "Encrypted backup"
+  },
+  "settings_aboutBackupText": {
+    "message": "Google Drive backups are encrypted locally before upload; backup passwords and raw device keys are never uploaded."
+  },
+  "settings_aboutPermissionTitle": {
+    "message": "Permission boundaries"
+  },
+  "settings_aboutPermissionText": {
+    "message": "Chrome bookmarks are read only when related features run; PageClip does not modify native bookmarks, advertise, or track behavior."
+  },
+  "settings_aboutGithub": {
+    "message": "GitHub source"
+  },
+  "settings_aboutIssues": {
+    "message": "Feedback & issues"
+  },
+  "settings_aboutWebsite": {
+    "message": "Project website"
+  },
+  "settings_aboutStore": {
+    "message": "Chrome Web Store"
+  },
+  "settings_aboutPrivacy": {
+    "message": "Privacy policy"
+  },
+  "settings_aboutTerms": {
+    "message": "Terms of service"
+  },
+  "settings_cloudConnected": {
+    "message": "Connected"
+  },
+  "settings_recoveryExported": {
+    "message": "Recovery key exported"
+  },
+  "settings_recoveryImported": {
+    "message": "Recovery key imported"
+  },
+  "settings_restoreHint": {
+    "message": "Merge keeps local data and adds cloud content; replace overwrites current PageClip data with the cloud data."
+  },
+  "settings_restoreMergeDone": {
+    "message": "Cloud data merged"
+  },
+  "settings_restoreReplaceDone": {
+    "message": "Cloud data replaced local data"
+  },
+  "settings_restoreTime": {
+    "message": "Backup time: $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "settings_signedOut": {
+    "message": "Signed out of Google Drive"
   }
 }
