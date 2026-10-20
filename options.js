@@ -10,6 +10,7 @@ import { initI18n, applyI18n, onLocaleChanged, setLocalePreference, getLocalePre
 import { encryptBackup, decryptBackup, createPasswordVerifier, verifyBackupPassword, getOrCreateDeviceKey, exportEncryptedRecoveryKey, importEncryptedRecoveryKey } from './js/crypto-backup.js';
 import { connectGoogle, signOutGoogle, uploadLatestBackup, downloadLatestBackup, downloadBackup, listBackups, getCloudBackupStatus } from './js/cloud-backup.js';
 import { getCloudCardState } from './js/cloud-status.js';
+import { aiText, createAISettingsCard } from './js/ai-settings.js';
 
 const root = document.getElementById('options-root');
 let data = null;
@@ -70,6 +71,7 @@ function render() {
           ), { search: t('settings.backup') + ' ' + t('settings.backupHint') }),
           cloudCard(),
           card(t('settings.recycle'), t('settings.recycleHint'), recycleView(recycle), { search: t('settings.recycle') + ' ' + t('settings.recycleHint') })),
+        settingsSection('ai', aiText('section'), createAISettingsCard({ h, card, actions, button })),
         settingsSection('general', t('settings.sectionGeneral'),
           languageCard(),
           card(t('settings.shortcuts'), t('settings.shortcutsHint'), h('div', {},
@@ -109,11 +111,12 @@ function settingsNav() {
     ['tags', 'settings.sectionTags'],
     ['import', 'settings.sectionImport'],
     ['backup', 'settings.sectionBackup'],
+    ['ai', null],
     ['general', 'settings.sectionGeneral'],
     ['about', 'settings.sectionAbout'],
   ]) {
     const item = h('button', { class: 'settings-nav-item', type: 'button', 'data-section-nav': id },
-      h('span', { class: 'settings-nav-dot' }), h('span', { text: t(labelKey) }));
+      h('span', { class: 'settings-nav-dot' }), h('span', { text: id === 'ai' ? aiText('section') : t(labelKey) }));
     item.addEventListener('click', () => {
       activeSettingSection = id;
       document.getElementById('settings-section-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });

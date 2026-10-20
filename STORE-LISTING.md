@@ -7,7 +7,16 @@
 - Privacy policy: https://phishinqi.github.io/PageClip/privacy.html
 - Terms of service: https://phishinqi.github.io/PageClip/terms.html
 - Support: https://github.com/phishinqi/PageClip/issues
-- Last Web Store package: release/PageClip-v1.7.2.zip
+- Last Web Store package: release/PageClip-v1.8.0.zip
+
+## 1.8.0 release notes
+
+- Added AI organization with analysis, editable preview, explicit confirmation, keep-unchanged support, cancellation, retry and field-level undo.
+- Real progress reports successes, failures, pending items, batch size, waiting time and measured remaining time without interrupting edits.
+- Confirmed bookmarks are skipped by default across sessions; content changes make them eligible again, and users can explicitly rerun organized items.
+- Optional local word redaction and context-aware topic categorization operate on outgoing copies only, freeze per task and expose a request preview. Both are off by default.
+- AI settings support a local default gateway, model discovery and custom providers. Expanded model, storage, service, settings and browser regression coverage.
+- Validation uses mock requests; no real upstream API or embedding quality validation was performed.
 
 ## 1.7.2 release notes
 

@@ -148,8 +148,21 @@
     }
   }
 
+  const mockExtra = {};
+  const sessionStore = {
+    async get(keys) { const values = JSON.parse(sessionStorage.getItem('pageclip_ai_preview') || '{}'); return Object.fromEntries((Array.isArray(keys) ? keys : [keys]).map(key => [key, values[key]])); },
+    async set(patch) { const values = JSON.parse(sessionStorage.getItem('pageclip_ai_preview') || '{}'); Object.assign(values, patch); sessionStorage.setItem('pageclip_ai_preview', JSON.stringify(values)); },
+  };
   const chromeMock = {
-    runtime: { id: 'mock-extension-id', getURL(path) { return String(path || ''); } },
+    runtime: { id: 'mock-extension-id', getURL(path) { return String(path || ''); }, async sendMessage(message) {
+      const result = { baseUrl: 'https://preview.invalid/v1', model: 'preview-mock', hasKey: false };
+      if (message.type === 'ai-analyze') {
+        const input = JSON.parse(message.body.messages[1].content);
+        return { ok: true, result: { content: JSON.stringify({ newFolders: [], suggestions: input.bookmarks.map(item => ({ itemId: item.itemId, targetFolderId: null, newFolderTempId: null, addTags: ['Demo'], reason: 'Preview only — no network request.' })) }) } };
+      }
+      if (message.type?.startsWith('ai-')) return { ok: true, result };
+      return { ok: false };
+    } },
     i18n: { getUILanguage() { return window.__pageclipMockLocale || 'zh-CN'; } },
     identity: {
       async getAuthToken() { if (!mockAuthEnabled) throw new Error('模拟 OAuth 被拒绝'); return { token: 'mock-google-token' }; },
@@ -158,15 +171,17 @@
       async clearAllCachedAuthTokens() {},
     },
     storage: {
+      session: sessionStore,
       local: {
         get(key, cb) {
           const keys = key == null ? ['bc_data'] : Array.isArray(key) ? key : [key];
-          const out = {};
+          const out = Object.fromEntries(keys.filter(key => key !== 'bc_data').map(key => [key, mockExtra[key]]));
           if (keys.includes('bc_data') && mockData) out.bc_data = mockData;
           return dual(out, cb);
         },
         set(obj, cb) {
           const oldValue = mockData;
+          Object.assign(mockExtra, Object.fromEntries(Object.entries(obj).filter(([key]) => key !== 'bc_data')));
           if ('bc_data' in obj) mockData = obj.bc_data;
           persist();
           if (listeners.storage) {

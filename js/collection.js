@@ -34,6 +34,8 @@ import { buildFolderStats, folderScope } from './collection-model.js';
 import { removeChromeBookmarksForItems } from './chrome-bookmark-sync.js';
 import { createTagInput, openBatchTagEditor, renameTagGlobally, mergeTagGlobally, deleteTagGlobally } from './tag-editor.js';
 
+import { openAiOrganizer, aiText } from './ai-launcher.js';
+
 export function createCollectionTab(ctx) {
   const { state } = ctx;
   const rail = ctx.railEl;
@@ -404,6 +406,7 @@ export function createCollectionTab(ctx) {
       h('button', { class: 'text-btn', onclick: () => selectVisible(data) }, '全选'),
       h('button', { class: 'text-btn', onclick: () => { selectedItems.clear(); selectionAnchor = null; renderAll(); } }, t('button.clearShort')),
       h('button', { class: 'text-btn', disabled: !selectedItems.size, onclick: () => editItemTags([...selectedItems]) }, t('tags.button')),
+      h('button', { class: 'text-btn', disabled: !selectedItems.size, onclick: () => organizeWithAi(data) }, aiText('AI 整理', 'AI organize')),
       h('button', { class: 'text-btn selection-delete', disabled: deleting || !selectedItems.size, onclick: () => deleteItems([...selectedItems]) }, t('selection.delete'))
     ) : null;
     const headerChildren = [
@@ -425,6 +428,7 @@ export function createCollectionTab(ctx) {
       selectionToolbar,
       selectButton,
       h('span', { class: 'flex1' }),
+      ...(!selectionToolbar ? [h('button', { class: 'text-btn', onclick: () => organizeWithAi(data) }, aiText('AI 整理', 'AI organize'))] : []),
       h(
         'span',
         { class: 'seg' },
@@ -447,6 +451,14 @@ export function createCollectionTab(ctx) {
     if (ctx.getData().settings.sortMode === mode) return;
     await updateSettings({ sortMode: mode });
     renderAll();
+  }
+
+  function organizeWithAi(data) {
+    const scope = folderScope(state.folderId, buildFolderStats(data));
+    const ids = selectedItems.size ? [...selectedItems] : data.items.filter(it =>
+      (!scope || scope.has(it.folderId)) && [...state.tagFilter].every(tag => (it.tags || []).some(x => x.toLowerCase() === tag.toLowerCase()))
+    ).map(it => it.id);
+    openAiOrganizer(ids).catch(() => toast(aiText('无法打开 AI 整理页', 'Could not open AI organizer')));
   }
 
   function selectVisible(data) {

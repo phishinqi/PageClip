@@ -1,6 +1,20 @@
 # PageClip（Chrome 扩展）
 
+### AI 默认网关与模型选择
+
+AI 设置默认填入本机 Magpie 网关 `http://127.0.0.1:3425/v1`，不会覆盖已保存的自定义地址。点击「获取可用模型」读取当前网关的 `/models` 列表，然后下拉选择并保存；也可手动填写模型 ID。获取模型不发送书签、不要求先选模型。默认 Magpie 地址在密钥留空时使用其占位认证值；切换到其他服务商时不会自动沿用旧地址的密钥。网关未启动、列表接口不兼容或请求失败时仍可手动输入模型名。
+
+
 在浏览器侧边栏中浏览、搜索、**完整管理** Chrome 自带书签，同时拥有一套独立的收藏体系（标签 / 备注 / 文件夹 / 置顶 / 时间）。纯原生 JS（Manifest V3），无需构建，加载即用。
+
+## 1.8.0 更新说明
+
+- 新增 AI 整理：先分析、预览，再确认应用分类与标签；支持保持原样、取消、失败重试与字段级撤销。
+- 真实进度卡显示成功、失败、待处理、本批条数、等待时间和基于实际吞吐的剩余时间；预览编辑不会被进度刷新打断。
+- 用户确认后本地持久去重，默认跳过已整理项；内容变化重新待整理，也可主动包含已整理项重跑。
+- 新增默认关闭的本地隐私词表脱敏和主题类目化，仅处理发送副本；规则随任务冻结，请求可预览，原收藏保持不变。
+- AI 设置支持默认本机网关、获取模型列表和自定义服务；补齐模型、事务、服务、设置页和浏览器 UI 回归覆盖。
+- 发布包已包含 AI 整理页面和全部运行模块。自动验证使用 mock 请求，未进行真实上游 API 或嵌入质量验证。
 
 ## 1.7.2 更新说明
 
@@ -83,12 +97,43 @@
 | 全局搜索 | 顶部搜索框同时搜永久收藏、快捷收藏、Inbox 和 Chrome 书签；结果分组显示、关键字高亮；输入 `#标签名` 可按标签过滤收藏和 Chrome 书签；结果可多选后批量编辑标签 |
 | 拖拽 | 条目拖到文件夹上移动；拖到条目上/下边缘插入排序；文件夹可互相嵌套（禁止移入自身子文件夹） |
 | 排序 | 收藏列表支持「按时间」/「手动排序」（拖拽后自动切换）两种模式，置顶条目始终在前 |
+| AI 设置（可选） | 自选 OpenAI 兼容服务商、API 根地址与模型；可选本机持久保存密钥、手动连接测试与清除密钥；中英文文案，支持设置搜索 |
 | 设置 ⚙ | 分类导航和搜索、等宽单列设置卡片、收藏统计、JSON / HTML / CSV 导入导出、可选的自动 Chrome 书签导入、标签管理与标签规则、Google Drive 加密云备份、自动备份、备份历史、回收站与快捷键说明 |
+
+## AI 设置（可选）
+
+设置页的「AI 设置 / AI settings」分类支持配置自选的 OpenAI 兼容服务商，无需依赖或构建：
+
+1. 填写 **Base URL**（API 根地址，例如 `https://api.example.com/v1`，不要填写完整的聊天接口路径）和模型 ID。
+2. 按需输入 API 密钥并点击「保存 AI 设置」。密钥留空会保留已保存的密钥；页面只显示是否已保存，绝不读取或回显已存密钥。
+3. 点击「测试已保存的连接」可手动验证。请先保存修改；测试只使用已保存配置，发送极小请求，可能产生少量费用，**不发送任何书签**。
+4. 不再需要时点击「清除已存 API 密钥」。此操作只清除密钥，保留地址和模型。
+
+保存配置本身不会发送书签或自动启用后台 AI 调用。AI 是主动选择的功能；主动使用 AI 时，书签元数据（例如标题、网址和已有标签）会发送给你选择的服务商，其数据处理受该服务商隐私政策约束。标签按网址在 PageClip 收藏和 Chrome 书签间共享。
+
+**English:** Optional AI settings support your own OpenAI-compatible API root (including `/v1`), model, and API key. Save before testing; a blank key preserves the saved key. Connection tests are manual, may incur a small charge, and send no bookmarks. Explicit AI use sends bookmark metadata to your selected provider. The saved key is never fetched or displayed by the settings page; use “Clear saved API key” to remove it.
+
+AI 整理继续采用「分析 → 预览 → 确认整理并应用所选修改」。进度卡只统计实际处理结果，分别显示成功、失败、待处理、实际批次大小及等待时间；首批完成后按本轮吞吐估算剩余时间。100% 表示已处理，失败项仍可重试。完成确认后保留只读摘要，确认保持原样也能标记完成。
+
+确认记录独立保存在本机 `pageclip_ai_confirmations`，与数据及撤销记录在数据锁内一起提交。默认排除内容指纹匹配的已确认收藏，可选择「包含已整理」主动重跑；标题、完整 URL、备注、分类或有效共享标签变化会重新进入待整理，排序与更新时间不影响确认。分析成功本身不代表完成。撤销会同时恢复该操作的确认记录，并跳过后来改动或重新确认的状态。
+
+AI 设置还提供默认关闭的本地敏感词脱敏。每行一词，最多 500 词、每词 100 字符；词表仅留在当前浏览器，不参与同步、导出和模型请求。任务启动时冻结规则，文本发送副本采用字面匹配、忽略英文大小写、长词优先并使用稳定的 `[已脱敏_1]` 占位符；URL 先移除登录信息、查询参数和片段，仍命中则整字段脱敏。批次按脱敏后的实际字节数限制，折叠预览不显示原词对照。含占位符的新增分类、标签或理由须人工修正或明确保持原样，避免占位符落库。原收藏、ID、配置、密钥与原始冲突快照不参与替换。
+
+**English:** Organization uses analysis, editable preview, and explicit confirmation. Progress counts actual results, with separate failures and retry controls. Confirmations persist locally by bookmark ID and content fingerprint; unchanged confirmed items are skipped by default, while edits make them eligible again. Confirming unchanged items and guarded undo are supported. Optional local redaction is off by default, uses only your word list (500 terms, 100 characters each), freezes rules per task, and sends neutral placeholders in text values. Rules are never sent or synced. Requests are batched using their redacted byte size, and placeholder-bearing suggestions need correction or an explicit choice to keep the bookmark unchanged.
+
+本地主题类目化是独立的默认关闭选项（AI 设置 → 本地主题类目化），与隐私占位符脱敏分别控制。启用后先按软件、游戏、二进制、App、网络等上下文把主题短语归一到类目，再执行用户的隐私词表。例如 `Android逆向教程` → `Android程序分析教程`，`iOS逆向工程笔记` → `iOS程序分析笔记`，`XX游戏鉴权缺陷验证热补丁 PoC下载` → `XX游戏授权机制分析补丁下载`；对象名、平台、教程/笔记/补丁/下载/源码等资源信号保留，`逆向思维` 保持原意。规则表在 `js/ai-topics.js`，按上下文选择程序分析、二进制分析、授权机制分析、软件修改研究或运行时分析等类目；同样的输入和上下文产生相同结果，不调用模型判断。
+
+已类目化条目在请求中附带 `topicHints: { platforms, topics, resourceTypes }`，标题就是处理后的发送副本，不另发原始标题或映射字典。结构化提示也经过隐私词表脱敏。URL、ID、关联关系和原始分析快照保持原有语义；预算按最终请求字节计算。任务冻结本机 `pageclip_ai_topics` 的版本和开关，旧任务默认关闭该功能；请求预览显示本批处理条目、替换次数和命中字段。确认与撤销仍使用原收藏快照，模型产生的新类目须按原有流程人工预览确认。
+
+**English:** Optional local topic categorization preserves platform/product/resource signals and adds `topicHints` to the outgoing bookmark copy. Technical context selects neutral categories; ordinary expressions such as reverse thinking remain unchanged. Privacy word redaction runs after categorization, including hint values. Rules are local, versioned, frozen per task and off by default. Original bookmarks and conflict snapshots remain intact.
+
+离线质量评估可运行 `node scripts/ai-topic-metrics.mjs <本地评估文件.json>`。输入是非空数组，每条包含 `category`、同一嵌入模型生成的 `originalEmbedding` / `normalizedEmbedding`，以及使用相同聚类流程得到的 `originalCluster` / `normalizedCluster`。脚本只读取本地向量和标签，输出整体与各类目的平均/最低余弦相似度、ARI 和采用算术平均熵归一化的 NMI。先检查相似度较低的类目，再调整本地规则；ARI/NMI 衡量前后分组的一致程度，不能单独证明分类正确。当前测试只验证规则、请求边界和使用合成向量的指标公式，未生成真实嵌入或测量真实聚类质量。
 
 ## 数据与隐私
 
 - 插件收藏默认保存在本机浏览器（`chrome.storage.local`）；Google Drive 云备份支持手动触发，或在用户启用后于 PageClip 数据变更约 10 秒后自动触发，上传前使用客户端 AES-GCM 加密，云端仅保存密文；自动备份默认使用本机密钥。备份密码不保存，启用本机密钥模式时请另行保管加密恢复密钥。恢复密钥现在导出为加密二进制 `.pckey` 文件；二进制只隐藏文件结构，安全性仍由恢复密钥密码、PBKDF2 和 AES-GCM 提供。旧版 JSON 恢复密钥仍可导入。
 - 「Chrome 书签」页签的所有操作直接作用于浏览器书签，与 Chrome 同步机制一致。设置中的浏览器书签导入（手动或用户启用的自动导入）会将可用条目复制到 PageClip；Chrome 中的删除、移动和编辑不会删除或覆盖 PageClip 副本，而删除 PageClip 收藏（包括文件夹内条目）时，会按完整 URL 删除当前浏览器中所有匹配的 Chrome 书签，包含未通过导入建立关联的重复项；若清理失败，PageClip 条目会保留以供重试。重复 URL 在整个 PageClip 收藏中仅保留一条，复制后的条目会随常规 JSON 导出和已启用的加密云备份处理。
+- AI 配置使用独立的本机存储项 `pageclip_ai_config`。选择保存 API 密钥即选择在当前浏览器中持久保存；密钥不包含在 JSON / HTML / CSV 导出或 Google Drive 云备份中，不通过 Chrome 同步。该本机存储不是加密密钥保险库；不再需要时请在 AI 设置中清除。密钥仅用于向用户选择的 AI 服务商认证，不会发送到 PageClip 云端。AI 调用是可选的，普通收藏与标签规则仍在本机运行。
 - 给 Chrome 书签加的标签只保存在 PageClip 数据（`chrome.storage.local`）里，按网址与收藏共享，不会写入 Chrome 书签，因此不会随 Chrome 同步到其他设备；这些标签包含在 JSON 导出和加密云备份中。同一网址的多个 Chrome 书签共用一组标签；在 PageClip 里改书签网址时标签会跟过去，在 Chrome 自带的书签管理器里改网址则不会。标签规则只在本机运行。
 
 ## 权限说明

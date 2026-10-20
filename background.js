@@ -1,3 +1,4 @@
+import { handleAiMessage } from './js/ai-service.js';
 // MV3 Service Worker：严格无状态。
 // 不用任何全局变量保存业务数据，每次事件现用现读 chrome.storage.local，
 // 随时可能被系统终止也不会留下脏状态。
@@ -335,6 +336,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (['ai-config-status', 'ai-config-save', 'ai-config-clear-key', 'ai-test', 'ai-models', 'ai-analyze', 'ai-cancel'].includes(message?.type)) {
+    handleAiMessage(message, sender).then(sendResponse);
+    return true;
+  }
   if (!message?.type || !['capture-current', 'capture-quick', 'capture-inbox', 'sync-reading', 'open-manager', 'open-settings', 'get-i18n-messages', 'run-bookmark-import', 'set-bookmark-auto-import', 'get-bookmark-import-status'].includes(message.type)) return false;
   (async () => {
     if (message.type === 'get-i18n-messages') return { ok: true, locale: message.locale, messages: getMessages(message.locale) };

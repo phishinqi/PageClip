@@ -1,0 +1,292 @@
+// Browser integration with deterministic mocks; no extension install, model network or credentials.
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { chromium } from 'playwright';
+import { defaultData } from '../js/store.js';
+const data = defaultData();data.settings.uiLocale='en';
+data.folders.push({id:'work',name:'Work',parentId:null,order:1});
+data.items=Array.from({length:1367},(_,i)=>({id:'i'+i,title:'Bookmark '+i,url:'https://example.com/'+i,folderId:'f_uncategorized',note:'',tags:[],order:i,createdAt:1,updatedAt:1}));
+const root = new URL('../',import.meta.url);
+const server=http.createServer(async(req,res)=>{try{const path=decodeURIComponent(req.url.split('?')[0]);if(path.includes('..'))throw Error();const content=await readFile(new URL('.'+path,root));res.setHeader('Content-Type',path.endsWith('.js')?'text/javascript':path.endsWith('.css')?'text/css':'text/html');res.end(content);}catch{res.writeHead(404);res.end();}});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+let browser;
+try{
+ browser=await chromium.launch({headless:true});const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(({data})=>{
+ const local=JSON.parse(localStorage.getItem('mock-local')||'null')||{bc_data:data};const session=JSON.parse(localStorage.getItem('mock-session')||'null')||{pageclip_ai_launch:{ids:data.items.map(i=>i.id),createdAt:Date.now()}};const listeners=[];
+ const area=store=>({async get(keys){return Object.fromEntries((Array.isArray(keys)?keys:[keys]).map(k=>[k,structuredClone(store[k])]))},async set(patch){Object.assign(store,structuredClone(patch));localStorage.setItem(store===local?'mock-local':'mock-session',JSON.stringify(store))}});
+ window.__requests=[]; window.__delayFirst=true;
+ const intervals=new Set(), nativeInterval=window.setInterval, nativeClear=window.clearInterval;
+ window.__progressTimers=intervals;
+ window.setInterval=(...args)=>{const id=nativeInterval(...args);intervals.add(id);return id};
+ window.clearInterval=id=>{intervals.delete(id);return nativeClear(id)};
+ window.chrome={storage:{local:area(local),session:area(session),onChanged:{addListener(fn){listeners.push(fn)}}},i18n:{getUILanguage(){return'en'}},runtime:{getURL:p=>location.origin+'/'+p,async sendMessage(m){if(m.type==='ai-config-status')return{ok:true,result:{baseUrl:'https://provider.example/v1',model:'mock',hasKey:true}};if(m.type==='ai-analyze'){window.__requests.push(m.body);if(window.__delayFirst){window.__delayFirst=false;await new Promise(r=>setTimeout(r,1500))}const input=JSON.parse(m.body.messages[1].content);return{ok:true,result:{content:JSON.stringify({newFolders:[],suggestions:input.bookmarks.map(b=>({itemId:b.itemId,targetFolderId:'work',newFolderTempId:null,addTags:['Research'],reason:'<img src=x onerror=alert(1)> Test reason'}))})}}}return{ok:true,result:{cancelled:true}}}},tabs:{async create(){}},__local:local};
+ window.__baseSend=chrome.runtime.sendMessage;
+ },{data});
+ await page.goto(`http://127.0.0.1:${server.address().port}/ai-organizer.html`);
+ await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).click();
+ await page.waitForFunction(()=>window.__requests.length===1);
+ assert.match(await page.locator('#progress-counts').textContent(),/Total 1367 · Processed 0 · Succeeded 0 · Failed 0 · Pending 1367 · 0%/);
+ await page.waitForFunction(()=>document.getElementById('progress-timing').textContent.includes('Waiting 1s'));
+ assert.match(await page.locator('#progress-counts').textContent(),/Processed 0/);
+ await page.getByText('Analysis complete. Review suggestions.',{exact:true}).waitFor();
+ assert.match(await page.locator('#progress-counts').textContent(),/Processed 1367 · Succeeded 1367 · Failed 0 · Pending 0 · 100%/);
+ assert.equal(await page.locator('article').count(),50);assert.equal(await page.locator('article img').count(),0);
+ await page.getByRole('button',{name:'Next',exact:true}).click();assert.equal(await page.locator('article h3').first().textContent(),'Bookmark 50');
+ await page.setViewportSize({width:390,height:844});await page.emulateMedia({colorScheme:'dark'});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.getByRole('button',{name:'Confirm organization & apply selected changes',exact:true}).click();
+ await page.getByText(/Applied \(conflicts skipped\)/).waitFor();
+ assert.equal(await page.evaluate(()=>chrome.__local.bc_data.items.filter(i=>i.folderId==='work').length),1367);
+ await page.getByRole('button',{name:'Undo last organization (24 hours)',exact:true}).click();await page.getByText(/Undo result/).waitFor();
+ assert.equal(await page.evaluate(()=>chrome.__local.bc_data.items.filter(i=>i.folderId==='work').length),0);
+ // Reset must get a fresh idempotency key, so a second apply is not silently replayed.
+ await page.getByRole('button',{name:'Reset scope',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).click();
+ await page.getByText('Analysis complete. Review suggestions.',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Confirm organization & apply selected changes',exact:true}).click();
+ await page.getByText(/Applied \(conflicts skipped\)/).waitFor();
+ assert.equal(await page.evaluate(()=>chrome.__local.bc_data.items.filter(i=>i.folderId==='work').length),1367);
+ // Confirmations survive reopening and skip the default queue; explicit reruns opt in.
+ await page.reload();
+ await page.getByText('Completed organization (read-only)',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Reset scope',exact:true}).click();
+ assert.ok(await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).isDisabled());
+ await page.getByLabel('Include organized (run again)',{exact:true}).check();
+ // Failed analysis must stop on terminal errors and remain visibly actionable.
+ await page.getByRole('button',{name:'Reset scope',exact:true}).click();
+ await page.evaluate(()=>{const original=chrome.runtime.sendMessage;window.failedCalls=0;chrome.runtime.sendMessage=async m=>{if(m.type==='ai-analyze'){window.failedCalls++;return{ok:false,code:'BAD_REQUEST'}}return original(m)}});
+ await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).click();
+ await page.getByText('Model or gateway rejected request parameters (400/422). Check model/API compatibility. (BAD_REQUEST)',{exact:true}).first().waitFor();
+ assert.equal(await page.evaluate(()=>window.failedCalls),1);
+ assert.ok(await page.locator('.error-notice').count()>0);
+ assert.equal(await page.getByText('Analysis complete. Review suggestions.',{exact:true}).count(),0);
+ // Frozen redaction rules, safe previews, editing during waits and unchanged confirmation.
+ await page.evaluate(async()=>{
+   chrome.__local.bc_data.items=chrome.__local.bc_data.items.slice(0,41).map((i,n)=>({...i,title:'Secret '+n,note:'private note',folderId:'f_uncategorized',tags:[]}));
+   chrome.__local.bc_data.urlTags={};
+   await chrome.storage.local.set({bc_data:chrome.__local.bc_data,pageclip_ai_redaction:{enabled:true,words:['Secret','example.com','Work','private']}});
+   window.__redactedCalls=[];
+   chrome.runtime.sendMessage=async m=>{
+     if(m.type!=='ai-analyze')return window.__baseSend(m);
+     window.__redactedCalls.push(m.body);
+     const input=JSON.parse(m.body.messages[1].content);
+     if(window.__redactedCalls.length===2)await new Promise(r=>setTimeout(r,2200));
+     return {ok:true,result:{content:JSON.stringify({newFolders:[],suggestions:input.bookmarks.map(b=>({itemId:b.itemId,targetFolderId:'work',newFolderTempId:null,addTags:['Research'],reason:'Reason'}))})}};
+   };
+ });
+ await page.getByRole('button',{name:'Reset scope',exact:true}).click();
+ await page.getByLabel('Include notes (off by default)',{exact:true}).check();
+ await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).click();
+ await page.waitForFunction(()=>window.__redactedCalls.length===2);
+ const reason=page.locator('article textarea').first();
+ await reason.fill('Still editing'); await reason.focus();
+ await page.evaluate(()=>chrome.storage.local.set({pageclip_ai_redaction:{enabled:true,words:['Reason']}}));
+ await page.waitForTimeout(1100);
+ assert.equal(await reason.inputValue(),'Still editing');assert.equal(await reason.evaluate(n=>document.activeElement===n),true);
+ await page.getByText('Analysis complete. Review suggestions.',{exact:true}).waitFor();
+ assert.equal(await reason.inputValue(),'Still editing');
+ assert.equal(await reason.evaluate(n=>document.activeElement===n),true);
+ const wires=await page.evaluate(()=>window.__redactedCalls.map(b=>JSON.parse(b.messages[1].content)));
+ assert.equal(wires.length,3);
+ for(const wire of wires){
+   for(const bookmark of wire.bookmarks){assert.ok(!bookmark.title.includes('Secret'));assert.ok(bookmark.url.startsWith('[已脱敏_'));assert.ok(!bookmark.note.includes('private'));assert.ok(bookmark.itemId.startsWith('i'));}
+   assert.ok(!JSON.stringify(wire).includes('"words"'));
+ }
+ assert.ok(await page.getByText('Redacted request preview (latest batch)',{exact:true}).count());
+ assert.equal(await page.locator('details').evaluate(n=>n.open),false);
+ await reason.fill('Contains [已脱敏_1]');await reason.blur();
+ await page.getByRole('button',{name:'Confirm organization & apply selected changes',exact:true}).click();
+ await page.getByText(/A suggestion contains redaction placeholders/).waitFor();
+ await page.locator('article').first().getByLabel('Explicitly keep unchanged',{exact:true}).check();
+ await page.getByRole('button',{name:'Confirm organization & apply selected changes',exact:true}).click();
+ await page.getByText('Completed organization (read-only)',{exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>Object.values(chrome.__local.pageclip_ai_confirmations.records).filter(r=>r.operationId===chrome.__local.pageclip_ai_undo.operationId).length),41);
+ assert.equal(await page.evaluate(()=>chrome.__local.bc_data.items[0].folderId),'f_uncategorized');
+ assert.equal(await page.evaluate(()=>chrome.__local.bc_data.items[0].title),'Secret 0');
+ assert.equal(await page.evaluate(()=>chrome.__local.bc_data.items[0].note),'private note');
+ await page.reload();await page.getByText('Completed organization (read-only)',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Reset scope',exact:true}).click();
+ await page.getByLabel('Include organized (run again)',{exact:true}).uncheck();
+ assert.ok(await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).isDisabled());
+ // Cancellation keeps the actual pending item; a failed last batch is 100% with failures.
+ await page.evaluate(async()=>{
+   chrome.__local.bc_data.items[0].title='Changed after confirmation';
+   await chrome.storage.local.set({bc_data:chrome.__local.bc_data});
+   window.__mode='held';window.__held=0;
+   chrome.runtime.sendMessage=async m=>{
+     if(m.type==='ai-cancel'){window.__finish?.();return{ok:true,result:{cancelled:true}}}
+     if(m.type!=='ai-analyze')return window.__baseSend(m);
+     window.__held++;
+     if(window.__mode==='held')return new Promise(resolve=>{window.__finish=()=>resolve({ok:false,code:'CANCELLED'})});
+     if(window.__mode==='failure')return{ok:false,code:'BAD_REQUEST'};
+     const input=JSON.parse(m.body.messages[1].content);
+     return {ok:true,result:{content:JSON.stringify({newFolders:[],suggestions:input.bookmarks.map(b=>({itemId:b.itemId,targetFolderId:null,newFolderTempId:null,addTags:[],reason:'Reviewed'}))})}};
+   };
+ });
+ await page.getByRole('button',{name:'Reset scope',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).click();
+ await page.waitForFunction(()=>window.__held===1);
+ await page.getByRole('button',{name:'Cancel analysis',exact:true}).click();
+ await page.getByText('Cancelled; results kept',{exact:true}).waitFor();
+ assert.match(await page.locator('#progress-counts').textContent(),/Total 1 · Processed 0 .* Pending 1 · 0%/);
+ assert.equal(await page.evaluate(()=>window.__progressTimers.size),0);
+ await page.evaluate(()=>window.__mode='failure');
+ await page.getByRole('button',{name:'Resume pending batches',exact:true}).click();
+ await page.getByText('Finished with failures; 100% does not mean all succeeded',{exact:true}).waitFor();
+ assert.match(await page.locator('#progress-counts').textContent(),/Succeeded 0 · Failed 1 · Pending 0 · 100%/);
+ assert.equal(await page.evaluate(()=>window.__progressTimers.size),0);
+ await page.evaluate(()=>window.__mode='success');
+ await page.getByRole('button',{name:'Retry failed batches',exact:true}).first().click();
+ await page.getByText('Analysis complete. Review suggestions.',{exact:true}).waitFor();
+ assert.match(await page.locator('#progress-counts').textContent(),/Total 1 · Processed 1 · Succeeded 1 · Failed 0/);
+ await page.getByRole('button',{name:'Confirm organization & apply selected changes',exact:true}).click();
+ await page.getByText('Completed organization (read-only)',{exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>chrome.__local.pageclip_ai_undo.result.confirmed),1);
+ assert.equal(await page.evaluate(()=>chrome.__local.pageclip_ai_undo.result.moved),0);
+ assert.equal(await page.evaluate(()=>chrome.__local.pageclip_ai_undo.result.tagged),0);
+ // Confirm successes in a partially failed task, then retry only failures with a new operation.
+ await page.evaluate(async()=>{
+   for(const item of chrome.__local.bc_data.items.slice(0,21))item.note+=' retry scenario';
+   await chrome.storage.local.set({bc_data:chrome.__local.bc_data});
+   window.__partialCalls=0;window.__partialRetry=false;
+   chrome.runtime.sendMessage=async m=>{
+     if(m.type!=='ai-analyze')return window.__baseSend(m);
+     window.__partialCalls++;
+     if(window.__partialCalls===2&&!window.__partialRetry)return{ok:false,code:'BAD_REQUEST'};
+     const input=JSON.parse(m.body.messages[1].content);
+     return{ok:true,result:{content:JSON.stringify({newFolders:[],suggestions:input.bookmarks.map(b=>({itemId:b.itemId,targetFolderId:null,newFolderTempId:null,addTags:[],reason:'Reviewed'}))})}};
+   };
+ });
+ await page.getByRole('button',{name:'Reset scope',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).click();
+ await page.getByText('Finished with failures; 100% does not mean all succeeded',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Confirm organization & apply selected changes',exact:true}).click();
+ await page.getByText('Completed organization (read-only)',{exact:true}).waitFor();
+ const partialOperation=await page.evaluate(()=>chrome.__local.pageclip_ai_undo.operationId);
+ assert.equal(await page.evaluate(()=>chrome.__local.pageclip_ai_undo.result.confirmed),20);
+ await page.evaluate(()=>window.__partialRetry=true);
+ await page.getByRole('button',{name:'Retry failed batches',exact:true}).first().click();
+ await page.getByText('Analysis complete. Review suggestions.',{exact:true}).waitFor();
+ assert.match(await page.locator('#progress-counts').textContent(),/Total 1 · Processed 1 · Succeeded 1 · Failed 0/);
+ await page.getByRole('button',{name:'Confirm organization & apply selected changes',exact:true}).click();
+ await page.getByText('Completed organization (read-only)',{exact:true}).waitFor();
+ assert.notEqual(await page.evaluate(()=>chrome.__local.pageclip_ai_undo.operationId),partialOperation);
+ assert.equal(await page.evaluate(()=>chrome.__local.pageclip_ai_undo.result.confirmed),1);
+ assert.equal(await page.evaluate(()=>window.__partialCalls),3);
+ // Topic categorization freezes independently, preserves original snapshots and ordinary language.
+ await page.evaluate(async()=>{
+   chrome.__local.bc_data.items.forEach((item,n)=>{item.title=n===40?'逆向思维：如何解决问题':'Android逆向教程 '+n});
+   await chrome.storage.local.set({bc_data:chrome.__local.bc_data,pageclip_ai_topics:{version:1,enabled:true},pageclip_ai_redaction:{enabled:false,words:[]}});
+   window.__topicCalls=[];
+   chrome.runtime.sendMessage=async m=>{
+     if(m.type!=='ai-analyze')return window.__baseSend(m);
+     window.__topicCalls.push(m.body);
+     if(window.__topicCalls.length===1)await new Promise(resolve=>window.__releaseTopics=resolve);
+     const input=JSON.parse(m.body.messages[1].content);
+     return{ok:true,result:{content:JSON.stringify({newFolders:[],suggestions:input.bookmarks.map(b=>({itemId:b.itemId,targetFolderId:null,newFolderTempId:null,addTags:[],reason:'Reviewed'}))})}};
+   };
+ });
+ await page.getByRole('button',{name:'Reset scope',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm send & analyze',exact:true}).click();
+ await page.waitForFunction(()=>window.__topicCalls.length===1);
+ const topicPreview=page.locator('details').filter({has:page.getByText('Categorized request preview (latest batch)',{exact:true})});
+ assert.equal(await topicPreview.evaluate(node=>node.open),false);
+ await topicPreview.locator('summary').click();
+ assert.ok((await topicPreview.textContent()).includes('20 / 20 / 20'));
+ const previewPayload=JSON.parse(await topicPreview.locator('pre').textContent());
+ assert.ok(previewPayload.bookmarks[0].title.startsWith('Android程序分析教程'));
+ await topicPreview.locator('summary').click();
+ await page.evaluate(async()=>{await chrome.storage.local.set({pageclip_ai_topics:{version:1,enabled:false}});window.__releaseTopics()});
+ await page.getByText('Analysis complete. Review suggestions.',{exact:true}).waitFor();
+ const categorized=await page.evaluate(()=>window.__topicCalls.flatMap(b=>JSON.parse(b.messages[1].content).bookmarks));
+ assert.equal(categorized.length,41);
+ for(const item of categorized.slice(0,40)){
+   assert.ok(item.title.startsWith('Android程序分析教程'));
+   assert.deepEqual(item.topicHints,{platforms:['Android'],topics:['程序分析'],resourceTypes:['教程']});
+ }
+ assert.equal(categorized[40].title,'逆向思维：如何解决问题');assert.equal(categorized[40].topicHints,undefined);
+ assert.equal(await page.evaluate(()=>chrome.__local.bc_data.items[0].title),'Android逆向教程 0');
+ await page.getByRole('button',{name:'Confirm organization & apply selected changes',exact:true}).click();
+ await page.getByText('Completed organization (read-only)',{exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>chrome.__local.bc_data.items[0].title),'Android逆向教程 0');
+ assert.ok(await page.evaluate(()=>chrome.__local.pageclip_ai_confirmations.records.i0.fingerprint.includes('Android逆向教程')));
+ // Exercise the real settings UI against the real service, including request IDs.
+ const { handleAiMessage } = await import('../js/ai-service.js');
+ const privateStorage = {};
+ globalThis.chrome = { runtime: { id: 'test', getURL: p => 'chrome-extension://test/' + p }, storage: { local: { async get(k){return {[k]:privateStorage[k]}}, async set(v){Object.assign(privateStorage,v)} } } };
+ globalThis.fetch = async () => new Response(JSON.stringify({data:[{id:'model-choice-a'},{id:'model-choice-b'}]}));
+ await page.exposeFunction('settingsBackend', message => handleAiMessage(message,{id:'test',url:'chrome-extension://test/options.html'}));
+ await page.evaluate(async()=>{
+   window.__settingsRequests=[];
+   chrome.runtime.sendMessage = message => {window.__settingsRequests.push(message);return window.settingsBackend(message)};
+   const { createAISettingsCard } = await import('./js/ai-settings.js');
+   const h=(tag,attrs={},...children)=>{const n=document.createElement(tag);for(const [k,v]of Object.entries(attrs)){if(k==='text')n.textContent=v;else if(k==='class')n.className=v;else n.setAttribute(k,v)}n.append(...children.filter(x=>x!=null));return n};
+   window.__mountSettings=()=>document.getElementById('app').replaceChildren(createAISettingsCard({h,card:(title,hint,body)=>h('section',{},h('h2',{text:title}),body),actions:(...nodes)=>h('div',{},...nodes),button:(text,cls,fn)=>{const n=h('button',{text});n.addEventListener('click',fn);return n}}));
+   window.__mountSettings();
+ });
+ await page.addStyleTag({url:`http://127.0.0.1:${server.address().port}/css/options.css`});
+ await page.locator('input[type=url]').waitFor();
+ assert.equal(await page.locator('.ai-model-select').evaluate(n=>getComputedStyle(n).borderRadius),'8px');
+ assert.equal(await page.locator('.ai-model-picker').evaluate(n=>getComputedStyle(n).flexDirection),'column');
+ await page.setViewportSize({width:1100,height:850});
+ assert.equal(await page.locator('.ai-model-picker').evaluate(n=>getComputedStyle(n).flexDirection),'row');
+ await page.waitForFunction(()=>!document.querySelector('input[type=url]').disabled);
+ await page.locator('input[type=url]').fill('https://api.example.com/v1');
+ await page.locator('input[type=text]').fill('mock');
+ await page.locator('input[type=password]').fill('test-only-placeholder');
+ await page.getByRole('button',{name:/^Save/}).click();
+ await page.waitForFunction(()=>document.querySelector('input[type=password]').value==='');
+ assert.equal(privateStorage.pageclip_ai_config.model,'mock');
+ await page.getByRole('button',{name:'Fetch available models',exact:true}).click();
+ await page.getByText('Available models: 2',{exact:true}).waitFor();
+ await page.getByRole('combobox').selectOption('model-choice-b');
+ assert.equal(await page.locator('input[type=text]').inputValue(),'model-choice-b');
+ await page.getByRole('button',{name:/^Save/}).click();
+ await page.waitForFunction(()=>!document.querySelector('input[type=text]').disabled);
+ assert.equal(privateStorage.pageclip_ai_config.model,'model-choice-b');
+ globalThis.fetch = async () => new Response('{}',{status:401});
+ await page.getByRole('button',{name:'Fetch available models',exact:true}).click();
+ await page.locator('.ai-status-error[role=alert]').waitFor();
+ assert.match(await page.locator('.ai-status-error').textContent(),/Authentication failed/);
+ // Rules use local storage only, enforce boundaries and reload in both locales.
+ const settingsRequests=await page.evaluate(()=>window.__settingsRequests.length);
+ assert.equal(await page.locator('#ai-topics-enabled').isChecked(),false);
+ await page.locator('#ai-topics-enabled').check();
+ await page.getByRole('button',{name:'Apply local topic setting',exact:true}).click();
+ await page.getByText('Topic setting saved locally. Existing tasks keep their frozen rules.',{exact:true}).waitFor();
+ assert.deepEqual(await page.evaluate(()=>chrome.__local.pageclip_ai_topics),{version:1,enabled:true});
+ assert.equal(await page.evaluate(()=>window.__settingsRequests.length),settingsRequests);
+ await page.locator('#ai-redaction-words').fill('客户\nSECRET\nsecret\n');
+ await page.locator('#ai-redaction-enabled').check();
+ await page.getByRole('button',{name:'Apply local redaction rules',exact:true}).click();
+ await page.getByText('Redaction rules saved locally. Existing tasks keep their frozen rules.',{exact:true}).waitFor();
+ assert.deepEqual(await page.evaluate(()=>chrome.__local.pageclip_ai_redaction),{enabled:true,words:['客户','SECRET']});
+ assert.equal(await page.evaluate(()=>window.__settingsRequests.length),settingsRequests);
+ await page.locator('#ai-redaction-words').fill(Array.from({length:501},(_,i)=>'word'+i).join('\n'));
+ await page.getByRole('button',{name:'Apply local redaction rules',exact:true}).click();
+ await page.getByText('Use at most 500 unique words. No rules were saved.',{exact:true}).waitFor();
+ assert.deepEqual(await page.evaluate(()=>chrome.__local.pageclip_ai_redaction.words),['客户','SECRET']);
+ await page.locator('#ai-redaction-words').fill('x'.repeat(101));
+ await page.getByRole('button',{name:'Apply local redaction rules',exact:true}).click();
+ await page.getByText('Each word must be at most 100 characters. No rules were saved.',{exact:true}).waitFor();
+ await page.evaluate(()=>{document.documentElement.lang='zh-CN';window.__mountSettings()});
+ await page.getByRole('heading',{name:'AI 本地脱敏',exact:true}).waitFor();
+ await page.getByRole('heading',{name:'本地主题类目化',exact:true}).waitFor();
+ await page.waitForFunction(()=>document.getElementById('ai-topics-enabled').checked);
+ await page.waitForFunction(()=>document.getElementById('ai-redaction-words').value==='客户\nSECRET');
+ assert.equal(await page.locator('#ai-redaction-enabled').isChecked(),true);
+ await page.locator('#ai-topics-enabled').focus();await page.keyboard.press('Space');
+ assert.equal(await page.locator('#ai-topics-enabled').isChecked(),false);
+ await page.keyboard.press('Space');
+ await page.locator('#ai-redaction-enabled').focus();await page.keyboard.press('Space');
+ assert.equal(await page.locator('#ai-redaction-enabled').isChecked(),false);
+ await page.keyboard.press('Space');
+ await page.setViewportSize({width:390,height:844});
+ await page.emulateMedia({colorScheme:'dark'});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.locator('#ai-redaction-words').focus();
+ assert.equal(await page.locator('#ai-redaction-words').evaluate(n=>document.activeElement===n),true);
+ assert.deepEqual(errors,[]);
+ console.log('AI UI integration passed: 1367 mock items, real progress, stable editing, cancellation/retry, persistent confirmation/undo, frozen redaction/topic categorization, settings limits, both locales, dark and narrow screens');
+}finally{await browser?.close();await new Promise(r=>server.close(r));}

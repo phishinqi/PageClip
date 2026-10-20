@@ -45,7 +45,7 @@ if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 if (Test-Path -LiteralPath $crx) { Remove-Item -LiteralPath $crx -Force }
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 
-$files = @('manifest.json', 'background.js', 'logo.svg', 'options.html', 'options.js', 'sidepanel.html', 'sidepanel.js')
+$files = @('manifest.json', 'background.js', 'logo.svg', 'options.html', 'options.js', 'sidepanel.html', 'sidepanel.js', 'ai-organizer.html', 'ai-organizer.js')
 $directories = @('content', 'css', 'js', 'icons', '_locales')
 foreach ($relative in $files) {
   $source = Join-Path $root $relative
@@ -64,6 +64,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to strip manifest key from release stag
 
 $releaseManifest = Get-Content -LiteralPath (Join-Path $stage 'manifest.json') -Raw | ConvertFrom-Json
 if ($null -ne $releaseManifest.key) { throw 'Release manifest still contains key' }
+if (-not (Test-Path -LiteralPath (Join-Path $stage 'ai-organizer.html'))) { throw 'ai-organizer.html missing' }
+if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/ai-topics.js'))) { throw 'ai-topics.js missing' }
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/cloud-backup.js'))) { throw 'cloud-backup.js missing' }
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/crypto-backup.js'))) { throw 'crypto-backup.js missing' }
 
