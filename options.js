@@ -8,11 +8,40 @@ import { bookmarkRuleEntries, cleanTag, countTags, hasActiveRules, normalizeTagR
 import { importBookmarksHtml } from './js/bookmark-import.js';
 import { initI18n, applyI18n, onLocaleChanged, setLocalePreference, getLocalePreference, translateText, t } from './js/i18n.js';
 import { encryptBackup, decryptBackup, createPasswordVerifier, verifyBackupPassword, getOrCreateDeviceKey, exportEncryptedRecoveryKey, importEncryptedRecoveryKey } from './js/crypto-backup.js';
+import { workerAuthConfigured, workerAuthDiagnostics } from './js/google-worker-auth.js';
+import { createStatusRefresh } from './js/settings-status-refresh.js';
 import { connectGoogle, signOutGoogle, uploadLatestBackup, downloadLatestBackup, downloadBackup, listBackups, getCloudBackupStatus } from './js/cloud-backup.js';
 import { getCloudCardState } from './js/cloud-status.js';
 import { aiText, createAISettingsCard } from './js/ai-settings.js';
 
 const root = document.getElementById('options-root');
+// Keep one live sync panel so rerendering other controls preserves its listeners and conflicts.
+const syncPanel = document.getElementById('sync-settings');
+let cloudAuth = null;
+let cloudOperation = null;
+let cloudControlsSignature = '';
+let resumingCloudAuth = false;
+async function resumeCloudAuthorization() {
+  if (document.hidden || resumingCloudAuth || !['awaiting-authorization', 'token-received'].includes(cloudAuth?.phase)) return;
+  resumingCloudAuth = true;
+  try { await chrome.runtime.sendMessage({ type: 'cloud-sync', action: 'auth-resume' }); }
+  catch { /* The durable alarm remains the fallback if the worker is unavailable. */ }
+  finally { resumingCloudAuth = false; cloudRefresh.request({ immediate: true }); }
+}
+const cloudRefresh = createStatusRefresh({
+  visible: () => !document.hidden && !!data,
+  read: async () => ({ data: await loadData(), status: await getCloudBackupStatus(), auth: workerAuthConfigured() ? await workerAuthDiagnostics() : null }),
+  apply: snapshot => {
+    data = snapshot.data;
+    cloudStatus = snapshot.status;
+    cloudAuth = snapshot.auth;
+    updateCloudControls();
+  },
+  onError: () => {
+    const node = document.getElementById('cloud-refresh-error');
+    if (node) { node.hidden = false; node.textContent = '状态读取失败，请稍后刷新；不能据此认为备份已完成。'; }
+  },
+});
 let data = null;
 let recycleSelection = new Set();
 let cloudStatus = { connected: false, account: null, file: null };
@@ -29,8 +58,19 @@ async function init() {
   data = await loadData();
   await initI18n({ root: document });
   cloudStatus = await getCloudBackupStatus();
+  cloudAuth = workerAuthConfigured() ? await workerAuthDiagnostics() : null;
   await loadBookmarkUrls();
   render();
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && ['bc_data', 'pageclipWorkerAuth', 'pageclipGoogleAuth'].some(key => Object.hasOwn(changes, key))) cloudRefresh.request();
+  });
+  const resumeAndRefresh = () => { cloudRefresh.request({ immediate: true }); void resumeCloudAuthorization(); };
+  document.addEventListener('visibilitychange', resumeAndRefresh);
+  window.addEventListener('focus', resumeAndRefresh);
+  // Read-only fallback for missed events; no Drive requests or token renewal from status polling.
+  setInterval(() => cloudRefresh.request(), 15000);
+  cloudRefresh.request({ immediate: true });
+  void resumeCloudAuthorization();
   onLocaleChanged(() => { applyI18n(document); render(); });
 }
 
@@ -198,13 +238,39 @@ function languageCard() {
 }
 
 function cloudCard() {
+  const element = card('Google Drive', '自动加密备份本地数据，需要时可手动备份或恢复。', h('div', { class: 'cloud-backup' },
+    cloudBackupControls()
+  ), { full: true, search: [t('settings.cloud'), t('settings.manualBackup'), t('settings.manualRestore'), t('settings.autoBackup'), '恢复密钥'].join(' ') });
+  element.id = 'cloud-settings-card';
+  return element;
+}
+
+function cloudControlsState() {
+  return JSON.stringify([cloudStatus, data.settings?.cloudBackup, cloudAuth, cloudOperation]);
+}
+function updateCloudControls() {
+  if (syncPanel) syncPanel.dataset.connected = String(!!cloudStatus.connected);
+  const previous = document.getElementById('cloud-backup-controls');
+  if (previous && cloudControlsSignature !== cloudControlsState()) previous.replaceWith(cloudBackupControls());
+  window.dispatchEvent(new Event('pageclip-cloud-status'));
+}
+
+function cloudBackupControls() {
+  cloudControlsSignature = cloudControlsState();
+  if (syncPanel) syncPanel.dataset.connected = String(!!cloudStatus.connected);
   const view = getCloudCardState(cloudStatus, data.settings?.cloudBackup || {});
   const connected = view.connected;
   const authorizationRequired = view.authorizationRequired;
-  return card(t('settings.cloud'), t('settings.cloudHint'), h('div', { class: 'cloud-backup' },
-    h('div', { class: 'cloud-status' }, h('strong', { text: t(view.titleKey, view.titleValues) }), h('span', { class: 'desc', text: t(view.statusKey, view.statusValues) })),
+  const content = h('div', { id: 'cloud-backup-controls', class: 'cloud-backup' },
+    h('div', { class: 'cloud-status', role: 'status', 'aria-live': 'polite' }, h('strong', { text: t(view.titleKey, view.titleValues) }), h('span', { class: 'desc', text: t(view.statusKey, view.statusValues) })),
+    cloudAuth?.phase === 'awaiting-authorization' ? h('p', { class: 'desc', role: 'status', text: cloudAuth.errorCode && cloudAuth.errorCode !== 'pending' ? '授权暂未完成，请返回授权页或重新连接。' : '等待 Google 授权完成，完成后会自动更新连接状态。' }) : null,
+    cloudAuth?.phase === 'revoking' ? h('p', { class: 'desc', role: 'status', text: '正在撤销授权，完成后将断开账号。' }) : null,
+    cloudOperation ? h('p', { class: 'desc', role: 'status', text: cloudOperation }) : null,
+    h('p', { id: 'cloud-refresh-error', class: 'desc', role: 'status', hidden: true }),
+    h('h3', { class: 'cloud-section-title', text: '整份备份' }),
     actions(
       !connected ? button(t(authorizationRequired ? 'settings.reconnect' : 'settings.connect'), 'primary', connectCloud) : null,
+      connected ? button(t('settings.reconnect'), '', connectCloud) : null,
       connected ? button(t('settings.manualBackup'), 'primary', runCloudBackup) : null,
       connected ? button(t('settings.manualRestore'), '', runCloudRestore) : null,
       connected ? button(t('settings.viewBackups'), '', showCloudBackups) : null,
@@ -215,7 +281,9 @@ function cloudCard() {
     (connected || authorizationRequired) ? autoBackupControls(authorizationRequired) : null,
     (connected || authorizationRequired) ? h('p', { class: 'desc recovery-note', text: t('settings.recoveryBinaryNote') }) : null,
     h('p', { class: 'desc cloud-note', text: t('settings.cloudNote') })
-  ), { search: [t('settings.cloud'), t('settings.cloudHint'), t('settings.manualBackup'), t('settings.manualRestore'), t('settings.autoBackup'), t('settings.exportRecovery'), t('settings.importRecovery')].join(' ') });
+  );
+  if (cloudOperation) content.querySelectorAll('button, input').forEach(control => { control.disabled = true; });
+  return content;
 }
 
 function autoBackupControls(authorizationRequired = false) {
@@ -252,8 +320,14 @@ async function saveAutoBackupSettings(enabled, checkbox) {
   }
 }
 
-async function connectCloud() { try { await connectGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); render(); toast(t('settings.cloudConnected')); } catch (error) { toast(error.message || t('backup.googleFailed'), 'error'); } }
-async function disconnectCloud() { if (!confirm(t('backup.logoutConfirm'))) return; try { await signOutGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); render(); toast(t('settings.signedOut')); } catch (error) { toast(error.message || t('backup.failed'), 'error'); } }
+async function connectCloud() {
+  if (cloudOperation) return;
+  cloudOperation = '正在连接 Google Drive…'; updateCloudControls();
+  try { await connectGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); updateCloudControls(); toast(t('settings.cloudConnected')); }
+  catch (error) { toast(error.code === 'authorization_pending' ? 'Google 授权页已打开，完成后返回此页面即可。' : error.message || t('backup.googleFailed'), error.code === 'authorization_pending' ? 'ok' : 'error'); }
+  finally { cloudOperation = null; updateCloudControls(); cloudRefresh.request({ immediate: true }); }
+}
+async function disconnectCloud() { if (!confirm(workerAuthConfigured() ? '断开将撤销此 Google 账号对 PageClip 的授权，并删除认证服务中的账号凭据，其他设备也可能需要重新连接。不会删除本地数据或 Drive 文件。继续？' : t('backup.logoutConfirm'))) return; try { await signOutGoogle(); cloudStatus = await getCloudBackupStatus(); data = await loadData(); render(); toast(t('settings.signedOut')); } catch (error) { toast(error.message || t('backup.failed'), 'error'); } }
 
 async function chooseBackupMode() {
   const body = h('div', { class: 'cloud-form' });
@@ -275,6 +349,8 @@ async function askPassword(title, confirmPassword = false, label = '备份密码
 }
 
 async function runCloudBackup() {
+  if (cloudOperation) return;
+  cloudOperation = '正在准备备份…'; updateCloudControls();
   try {
     await connectGoogle();
     cloudStatus = await getCloudBackupStatus();
@@ -289,11 +365,13 @@ async function runCloudBackup() {
     } else options.key = await getOrCreateDeviceKey();
     cloudStatus = await getCloudBackupStatus();
     if (cloudStatus.file && !confirm(t('backup.overwrite'))) return;
+    cloudOperation = '正在加密并上传备份，等待云端确认…'; updateCloudControls();
     const envelope = await encryptBackup(getCloudBackupPayload(data), options);
     const result = await uploadLatestBackup(envelope);
     cloudStatus = await getCloudBackupStatus();
     data = await loadData(); render(); toast(t('backup.success', { SIZE: Math.round(result.size / 1024) }));
   } catch (error) { toast(error.message || t('backup.cloudFailed'), 'error'); }
+  finally { cloudOperation = null; updateCloudControls(); cloudRefresh.request({ immediate: true }); }
 }
 
 async function runCloudRestore() { return restoreCloudFile(null); }

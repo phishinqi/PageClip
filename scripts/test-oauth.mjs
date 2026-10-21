@@ -2,236 +2,245 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
-const source = await readFile(new URL('../js/cloud-backup.js', import.meta.url), 'utf8');
-const executable = source
-  .replace(/^import[^;]+;\s*/gm, '')
-  .replace(/^export\s+/gm, '')
-  + '\n globalThis.__oauthTest = { getToken, clearToken, driveRequest, parseOAuthCallback, isBraveBrowser };';
+const source = await readFile(new URL('../js/google-auth.js', import.meta.url), 'utf8');
+const executable = source.replace(/^import[^;]+;\s*/gm, '').replace(/^export\s*\{[^}]+\}\s*from[^;]+;\s*/gm, '').replace(/^export\s+/gm, '')
+  + '\n globalThis.__authTest = { getToken, clearToken, getAuthenticatedAccount, authenticationStatus, disconnectAuthentication, createSyncSession };';
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
 
-async function loadAuth({ brave = false, brands = [], nativeToken, nativeError, webCallback, webFlow, includeWebApi = true, storageState = {}, fetchHandler } = {}) {
-  const calls = { native: 0, web: [], storage: [], fetch: [] };
-  const storage = {
-    async get(key) {
-      calls.storage.push(['get', key]);
-      return { [key]: storageState[key] };
-    },
-    async set(values) {
-      calls.storage.push(['set', values]);
-      Object.assign(storageState, values);
-    },
-    async remove(key) {
-      calls.storage.push(['remove', key]);
-      delete storageState[key];
-    },
-  };
+async function loadAuth({ native, brave = false, brands = [], userAgent = '', includeNative = true, storageState = {}, userInfo, boundAccount, fetchHandler, abortSignal = AbortSignal } = {}) {
+  const calls = { native: [], removed: [], web: [], fetch: [], profile: 0, storage: [] };
   const identity = {
-    async getAuthToken() {
-      calls.native += 1;
-      if (nativeError) throw nativeError;
-      return nativeToken ?? { token: 'native-token' };
+    async getAuthToken(options) {
+      calls.native.push(options);
+      return native ? native(options, calls.native.length) : { token: 'native-token' };
     },
-    getRedirectURL() {
-      calls.redirect = true;
-      return 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/';
-    },
+    async removeCachedAuthToken(details) { calls.removed.push(details.token); },
+    async clearAllCachedAuthTokens() { calls.clearAll = (calls.clearAll || 0) + 1; },
+    async getProfileUserInfo() { calls.profile += 1; return { email: 'wrong-browser-profile@example.com' }; },
+    async launchWebAuthFlow(details) { calls.web.push(details); throw new Error('Web OAuth must never run'); },
+    getRedirectURL() { throw new Error('Web OAuth redirects must never run'); },
   };
-  if (includeWebApi) {
-    identity.launchWebAuthFlow = async (details) => {
-      calls.web.push(details);
-      return webFlow ? webFlow(details, calls.web.length) : (webCallback ?? 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=web-token');
-    };
-  }
+  if (!includeNative) delete identity.getAuthToken;
   const context = {
-    chrome: { identity, storage: { local: storage }, runtime: { id: 'mnapcpmijebakicgdflohgnjmndhlneg' } },
-    navigator: brave ? { brave: { async isBrave() { return true; } }, userAgentData: { brands } } : { userAgentData: { brands }, userAgent: '' },
-    URL,
-    URLSearchParams,
-    Headers,
-    Response,
-    fetch: async (input, init = {}) => {
-      calls.fetch.push([input, init]);
-      if (fetchHandler) return fetchHandler(input, init, calls.fetch.length);
-      return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    workerAuthConfigured: () => false,
+    pkceConfiguration: async () => null,
+    getPkceToken: async () => { throw Object.assign(new Error('Desktop client required'), { kind: 'auth', code: 'native_unavailable', name: 'GoogleAuthError' }); },
+    clearPkceToken: async () => {}, disconnectPkce: async () => {},
+    chrome: { identity, storage: { local: {
+      async setAccessLevel(options) { calls.storage.push(['access', options.accessLevel]); },
+      async get(keys) {
+        calls.storage.push(['get', keys]);
+        if (keys == null) return { ...storageState };
+        return Object.fromEntries((Array.isArray(keys) ? keys : [keys]).map((key) => [key, storageState[key]]));
+      },
+      async set(values) { calls.storage.push(['set', values]); Object.assign(storageState, values); },
+      async remove(keys) { calls.storage.push(['remove', keys]); for (const key of [keys].flat()) delete storageState[key]; },
+    } }, runtime: { id: 'test-extension' } },
+    navigator: { userAgent, userAgentData: { brands }, ...(brave ? { brave: { async isBrave() { return true; } } } : {}) },
+    loadData: async () => ({ _sync: { account: boundAccount }, settings: { cloudBackup: {} } }),
+    fetch: async (url, init = {}) => {
+      calls.fetch.push([url, init]);
+      if (fetchHandler) return fetchHandler(url, init, calls.fetch.length);
+      return new Response(JSON.stringify(userInfo || { email: 'actual@example.com', sub: 'actual-user' }), { status: 200 });
     },
-    TextEncoder,
-    console,
+    AbortSignal: abortSignal, AbortController, setTimeout, clearTimeout, Date, URL, URLSearchParams, Headers, Response, console,
   };
   vm.createContext(context);
-  vm.runInContext(executable, context, { filename: 'cloud-backup.js' });
-  return { test: context.__oauthTest, calls, storageState };
+  vm.runInContext(executable, context, { filename: 'google-auth.js' });
+  return { test: context.__authTest, calls, storageState };
 }
 
+// Native identity owns token caching: every sequential call consults it, including after a worker restart.
 {
-  const { test, calls } = await loadAuth({ nativeToken: { token: 'chrome-token' } });
-  assert.equal(await test.getToken(true), 'chrome-token');
-  assert.equal(calls.native, 1);
+  const storageState = { pageclipBraveAccessToken: { token: 'legacy-brave-secret' }, pageclipWebAccessToken: { token: 'legacy-web-secret' } };
+  const first = await loadAuth({ storageState });
+  assert.equal(await first.test.getToken(), 'native-token');
+  assert.equal(await first.test.getToken(true), 'native-token');
+  assert.equal(first.calls.native.length, 2);
+  assert.equal(first.calls.native[0].interactive, false);
+  assert.equal(first.calls.native[1].interactive, true);
+  assert.equal(storageState.pageclipBraveAccessToken, undefined);
+  assert.equal(storageState.pageclipWebAccessToken, undefined);
+  const restarted = await loadAuth({ storageState });
+  await restarted.test.authenticationStatus();
+  assert.equal(await restarted.test.getToken(), 'native-token');
+  assert.equal(restarted.calls.native.length, 1);
+  assert.equal(restarted.calls.web.length, 0);
+  assert.equal(JSON.stringify(storageState).includes('native-token'), false);
+}
+
+for (const options of [
+  { brave: true }, { brands: [{ brand: 'Brave', version: '1' }] },
+  { userAgent: 'Mozilla/5.0 Firefox/128.0' }, { userAgent: 'Mozilla/5.0 Chrome/130.0 Edg/130.0' },
+  { includeNative: false },
+]) {
+  const { test, calls } = await loadAuth(options);
+  await assert.rejects(test.getToken(true), (error) => Boolean(error.code));
+  assert.equal(calls.native.length, 0);
   assert.equal(calls.web.length, 0);
 }
 
 {
-  const { test, calls } = await loadAuth({ brave: true, nativeError: new Error('must not call native') });
-  assert.equal(await test.getToken(true), 'web-token');
-  assert.equal(calls.native, 0);
-  assert.equal(calls.web.length, 1);
-  const authUrl = new URL(calls.web[0].url);
-  assert.equal(authUrl.searchParams.get('response_type'), 'token');
-  assert.equal(authUrl.searchParams.get('redirect_uri'), 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/');
-  assert.match(authUrl.searchParams.get('client_id'), /^996608683771-[a-z0-9]+\.apps\.googleusercontent\.com$/);
+  const pending = deferred();
+  const { test, calls } = await loadAuth({ native: () => pending.promise });
+  const requests = [test.getToken(), test.getToken(), test.getToken(true)];
+  await tick();
+  assert.equal(calls.native.length, 1);
+  pending.resolve({ token: 'shared-token' });
+  assert.deepEqual(await Promise.all(requests), ['shared-token', 'shared-token', 'shared-token']);
+  assert.equal(calls.native.length, 1);
 }
 
 {
-  const { test, calls } = await loadAuth({ brands: [{ brand: 'Brave', version: '1' }], nativeError: new Error('must not call native') });
-  assert.equal(await test.getToken(true), 'web-token');
-  assert.equal(calls.native, 0);
-  assert.equal(calls.web.length, 1);
-}
-
-{
-  const { test, calls } = await loadAuth({ nativeError: new Error('opaque native failure'), webCallback: 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/callback?access_token=query-token' });
-  await assert.rejects(() => test.getToken(true), /opaque native failure/);
-  assert.equal(calls.native, 1);
-  assert.equal(calls.web.length, 0);
-}
-
-{
-  const { test, calls } = await loadAuth({ nativeError: new Error('Custom URI scheme is not supported on Chrome apps'), webCallback: 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/callback?access_token=query-token' });
-  assert.equal(await test.getToken(true), 'query-token');
-  assert.equal(calls.native, 1);
-  assert.equal(calls.web.length, 1);
-}
-
-{
-  const { test } = await loadAuth();
-  assert.throws(() => test.parseOAuthCallback('https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#error=access_denied&error_description=User%20denied'), /User denied/);
-}
-
-{
-  const { test, calls } = await loadAuth({
-    brave: true,
-    webCallback: 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#error=interaction_required&error_description=Login%20needed',
-  });
-  await assert.rejects(() => test.getToken(false), /interaction_required/);
-  assert.equal(calls.web.length, 1);
-  const authUrl = new URL(calls.web[0].url);
-  assert.equal(authUrl.searchParams.get('prompt'), 'none');
-  assert.equal(calls.web[0].interactive, false);
-}
-
-{
-  const { test } = await loadAuth({ brave: true, includeWebApi: false });
-  await assert.rejects(() => test.getToken(true), /Brave Web OAuth API 不可用/);
-}
-
-{
-  let resolveWebFlow;
-  const pendingWebFlow = new Promise((resolve) => { resolveWebFlow = resolve; });
-  const { test, calls } = await loadAuth({ brave: true, webCallback: pendingWebFlow });
-  const first = test.getToken(true);
-  const second = test.getToken(true);
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.equal(calls.web.length, 1);
-  resolveWebFlow('https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=shared-token');
-  assert.equal(await first, 'shared-token');
-  assert.equal(await second, 'shared-token');
-}
-
-{
-  let rejectSilentFlow;
-  const silentWebFlow = new Promise((_, reject) => { rejectSilentFlow = reject; });
-  const { test, calls } = await loadAuth({
-    brave: true,
-    webFlow: (_, count) => count === 1
-      ? silentWebFlow
-      : 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=interactive-token',
-  });
-  const silent = test.getToken(false);
+  const pending = deferred();
+  const { test, calls } = await loadAuth({ native: (_, count) => count === 1 ? pending.promise : { token: 'upgraded-token' } });
+  const silent = test.getToken();
+  const silentRejected = assert.rejects(silent, (error) => Boolean(error.code));
   const interactive = test.getToken(true);
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.equal(calls.web.length, 1);
-  rejectSilentFlow(new Error('silent authorization unavailable'));
-  await assert.rejects(silent, /silent authorization unavailable/);
-  assert.equal(await interactive, 'interactive-token');
-  assert.equal(calls.web.length, 2);
-  const interactiveAuthUrl = new URL(calls.web[1].url);
-  assert.equal(interactiveAuthUrl.searchParams.get('prompt'), 'select_account');
+  const secondInteractive = test.getToken(true);
+  await tick();
+  assert.equal(calls.native.length, 1);
+  pending.reject(new Error('OAuth2 not granted or revoked.'));
+  await silentRejected;
+  assert.deepEqual(await Promise.all([interactive, secondInteractive]), ['upgraded-token', 'upgraded-token']);
+  assert.equal(calls.native.length, 2);
+  assert.equal(calls.native[1].interactive, true);
 }
 
-{
-  const { test, calls, storageState } = await loadAuth({
-    brave: true,
-    webCallback: 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=stored-token&expires_in=3600',
-  });
-  assert.equal(await test.getToken(true), 'stored-token');
-  assert.equal(storageState.pageclipBraveAccessToken.token, 'stored-token');
-  assert.equal(storageState.pageclipBraveAccessToken.expiresAt > Date.now(), true);
-  assert.equal(calls.native, 0);
-  assert.equal(calls.web.length, 1);
-}
-
-{
-  const { test, calls, storageState } = await loadAuth({
-    brave: true,
-    webCallback: 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=memory-only-token',
-  });
-  assert.equal(await test.getToken(true), 'memory-only-token');
-  assert.equal(storageState.pageclipBraveAccessToken, undefined);
-  assert.equal(calls.storage.some(([kind]) => kind === 'set'), false);
-}
-
-{
-  const { test, calls, storageState } = await loadAuth({ nativeToken: { token: 'chrome-token' } });
-  assert.equal(await test.getToken(true), 'chrome-token');
-  assert.equal(storageState.pageclipBraveAccessToken, undefined);
-  assert.equal(calls.storage.some(([kind]) => kind === 'set'), false);
-}
-
-{
-  const { test, calls, storageState } = await loadAuth({
-    nativeError: new Error('Custom URI scheme is not supported on Chrome apps'),
-    webCallback: 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=fallback-token&expires_in=3600',
-  });
-  assert.equal(await test.getToken(true), 'fallback-token');
-  assert.equal(calls.web.length, 1);
-  assert.equal(storageState.pageclipBraveAccessToken, undefined);
-  assert.equal(calls.storage.some(([kind]) => kind === 'set'), false);
-}
-
-{
-  const storageState = { pageclipBraveAccessToken: { token: 'warm-token', expiresAt: Date.now() + 60 * 60 * 1000 } };
-  const { test, calls } = await loadAuth({ brave: true, storageState });
-  assert.equal(await test.getToken(false), 'warm-token');
+// Transient failures must not turn a concurrent silent request into an interactive prompt.
+for (const message of ['OAuth2 request failed: network error', 'Rate limit exceeded']) {
+  const pending = deferred();
+  const { test, calls } = await loadAuth({ native: () => pending.promise });
+  const results = Promise.allSettled([test.getToken(), test.getToken(true)]);
+  await tick();
+  pending.reject(new Error(message));
+  const settled = await results;
+  assert.equal(settled.every((result) => result.status === 'rejected' && result.reason.code), true);
+  assert.equal(calls.native.length, 1);
   assert.equal(calls.web.length, 0);
-  assert.equal(calls.native, 0);
 }
 
+// Evict the exact rejected token, not a newer concurrent token.
 {
-  const storageState = { pageclipBraveAccessToken: { token: 'expired-token', expiresAt: Date.now() - 1 } };
-  const { test, calls } = await loadAuth({ brave: true, storageState, webCallback: 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=fresh-token&expires_in=3600' });
-  assert.equal(await test.getToken(false), 'fresh-token');
-  assert.equal(calls.storage.some(([kind, key]) => kind === 'remove' && key === 'pageclipBraveAccessToken'), true);
-  assert.equal(calls.web.length, 1);
-}
-
-{
-  const storageState = { pageclipBraveAccessToken: { token: 'warm-token', expiresAt: Date.now() + 60 * 60 * 1000 } };
-  const { test, calls } = await loadAuth({
-    brave: true,
-    storageState,
-    webCallback: 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/#access_token=replacement-token&expires_in=3600',
-    fetchHandler: (_, __, count) => new Response(JSON.stringify({ error: { message: 'Expired token' } }), { status: count === 1 ? 401 : 200, headers: { 'Content-Type': 'application/json' } }),
-  });
-  await test.driveRequest('https://www.googleapis.com/drive/v3/files', { interactive: false });
-  assert.equal(calls.web.length, 1);
-  assert.equal(calls.storage.some(([kind, key]) => kind === 'remove' && key === 'pageclipBraveAccessToken'), true);
-  assert.equal(storageState.pageclipBraveAccessToken.token, 'replacement-token');
-}
-
-{
-  const storageState = { pageclipBraveAccessToken: { token: 'warm-token', expiresAt: Date.now() + 60 * 60 * 1000 } };
-  const { test } = await loadAuth({ brave: true, storageState });
-  assert.equal(await test.getToken(false), 'warm-token');
+  const { test, calls } = await loadAuth({ native: (_, count) => ({ token: 'token-' + count }) });
+  await test.getToken();
+  await test.getToken();
+  await test.clearToken('token-1');
+  assert.equal(calls.removed.includes('token-1'), true);
+  assert.equal(calls.removed.includes('token-2'), false);
   await test.clearToken();
-  assert.equal(storageState.pageclipBraveAccessToken, undefined);
+  assert.equal(calls.removed.includes('token-2'), true);
 }
 
-console.log('OAuth behavior tests passed: token cache, silent flow, fallback, and concurrency');
+{
+  const { test, calls } = await loadAuth();
+  const account = await test.getAuthenticatedAccount('explicit-token');
+  assert.equal(account.email, 'actual@example.com');
+  assert.equal(calls.native.length, 0);
+  assert.equal(calls.profile, 0);
+  assert.equal(new Headers(calls.fetch[0][1].headers).get('Authorization'), 'Bearer explicit-token');
+  assert.ok(calls.fetch[0][1].signal, 'userinfo must have a timeout signal');
+}
+
+{
+  const { test } = await loadAuth({ boundAccount: 'bound@example.com' });
+  await assert.rejects(test.getAuthenticatedAccount('token'), (error) => error.kind === 'auth' && error.code === 'account_mismatch');
+  const matching = await loadAuth({ boundAccount: 'actual@example.com' });
+  assert.equal((await matching.test.getAuthenticatedAccount('token')).email, 'actual@example.com');
+}
+
+{
+  const { test, calls } = await loadAuth({ native: () => ({ token: 'under-scoped-token', grantedScopes: ['openid'] }) });
+  await assert.rejects(test.getToken(true), (error) => error.kind === 'permission' && error.code === 'scope');
+  assert.deepEqual(calls.removed, ['under-scoped-token']);
+}
+
+{
+  const pending = deferred();
+  const { test, calls, storageState } = await loadAuth({ native: () => pending.promise });
+  const result = assert.rejects(test.getToken(), (error) => error.kind === 'auth' && error.code === 'disconnected');
+  await tick();
+  await test.disconnectAuthentication();
+  pending.resolve({ token: 'late-token' });
+  await result;
+  assert.equal(calls.removed.includes('late-token'), true);
+  assert.equal(storageState.pageclipGoogleAuth.status, 'disconnected');
+}
+
+for (const [message, kind, code] of [
+  ['OAuth2 request failed: network error', 'retry', 'transport'],
+  ['Rate limit exceeded', 'retry', 'rate_limited'],
+  ['OAuth2 not granted or revoked.', 'auth', 'reauthorize'],
+  ['Insufficient permission', 'permission', 'scope'],
+  ['The user turned off browser signin', 'auth', 'native_unavailable'],
+]) {
+  const { test, calls, storageState } = await loadAuth({ native: () => { throw new Error(message + ' secret-provider-detail'); } });
+  await assert.rejects(test.getToken(true), (error) => error.kind === kind && error.code === code && !error.message.includes('secret-provider-detail'));
+  assert.equal(calls.web.length, 0);
+  assert.equal(JSON.stringify(storageState).includes('secret-provider-detail'), false);
+}
+
+for (const [status, kind, code] of [[401, 'auth', 'userinfo_unauthorized'], [403, 'permission', 'userinfo_permission'], [429, 'retry', 'userinfo_transport'], [503, 'retry', 'userinfo_transport']]) {
+  const { test, calls, storageState } = await loadAuth({ fetchHandler: () => new Response('{}', { status, headers: { 'Retry-After': '12' } }) });
+  await assert.rejects(test.getAuthenticatedAccount('rejected-token'), (error) => error.kind === kind && error.code === code && (status !== 429 || error.retryAfter === 12000));
+  assert.equal(calls.removed.includes('rejected-token'), status === 401);
+  assert.equal(storageState.pageclipGoogleAuth.status, kind === 'auth' ? 'reauthorize' : kind);
+}
+
+for (const fetchHandler of [
+  () => { throw new TypeError('fetch failed secret'); },
+  (_, { signal }) => new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true })),
+]) {
+  const { test } = await loadAuth({ fetchHandler, abortSignal: { timeout: () => AbortSignal.timeout(5) } });
+  // Keep the process alive while the deliberately shortened timeout fires.
+  const keepAlive = setTimeout(() => {}, 1000);
+  try { await assert.rejects(test.getAuthenticatedAccount('token'), (error) => error.kind === 'retry' && error.code === 'userinfo_transport'); }
+  finally { clearTimeout(keepAlive); }
+}
+
+{
+  const storageState = {};
+  const first = await loadAuth({ storageState });
+  await first.test.getToken();
+  assert.equal(storageState.pageclipGoogleAuth.status, 'ready');
+  assert.equal(storageState.pageclipGoogleAuth.expiryManagedBy, 'browser');
+  assert.equal(storageState.pageclipGoogleAuth.expiresAt, null);
+  await first.test.disconnectAuthentication();
+  assert.equal(first.calls.removed.includes('native-token'), true);
+  const restarted = await loadAuth({ storageState });
+  assert.equal((await restarted.test.authenticationStatus()).status, 'disconnected');
+  await assert.rejects(restarted.test.getToken(), (error) => error.kind === 'auth');
+  assert.equal(restarted.calls.native.length, 0);
+  assert.equal(await restarted.test.getToken(true), 'native-token');
+  assert.equal(JSON.stringify(storageState).includes('native-token'), false);
+}
+
+{
+  const gate=deferred();
+  const {test,calls}=await loadAuth({native:()=>gate.promise});
+  const silent=test.getToken(); const interactive=test.getToken(true);
+  const results=Promise.allSettled([silent,interactive]); await tick();
+  await test.disconnectAuthentication(); gate.resolve({token:'late'});
+  assert.ok((await results).every(r=>r.status==='rejected'));
+  assert.equal(calls.native.length,1);
+  assert.equal((await test.authenticationStatus()).status,'disconnected');
+}
+{
+  const {test,calls}=await loadAuth({native:(_opts,n)=>({token:'token-'+n}),fetchHandler:(_url,init)=>
+    init.headers.Authorization==='Bearer token-1' ? new Response('{}',{status:401}) : new Response(JSON.stringify({email:'actual@example.com'}))});
+  const session=test.createSyncSession('actual@example.com');
+  assert.equal(await session.getToken(),'token-2');
+  assert.deepEqual(calls.removed,['token-1']);
+  assert.equal((await test.authenticationStatus()).status,'ready');
+}
+{
+  const {test}=await loadAuth({native:()=>{throw new Error('server_error');}});
+  await assert.rejects(test.getToken(),e=>e.kind==='retry');
+}
+
+console.log('Native OAuth tests passed: restart, typed errors, timeout, legacy cleanup, unsupported browsers, singleflight, interactive upgrade, rejected-token eviction, and actual account identity');

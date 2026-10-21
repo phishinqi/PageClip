@@ -31,6 +31,9 @@ const bookmarkNodes = new Map([
   ['11', { id: '11', parentId: '1', title: '工作' }],
 ]);
 const context = {
+  SYNC_ALARM: 'pageclip-causal-sync', SYNC_RETRY_ALARM: 'pageclip-causal-sync-retry',
+  WORKER_AUTH_ALARM: 'pageclip-worker-auth', workerAuthConfigured: () => false,
+  configureSync: async () => {}, scheduleSync: async () => {}, runSync: async () => {}, handleSyncMessage: async () => ({}),
   chrome: {
     bookmarks: {
       ...events,
