@@ -1,4 +1,66 @@
+import { connectGoogle } from './js/cloud-backup.js';
+import { completeWorkerAuthorization } from './js/google-auth.js';
+import { GOOGLE_WORKER_ORIGIN } from './js/google-worker-config.js';
+import { WORKER_AUTH_ALARM, resumeWorkerAuthorization, workerAuthConfigured, acknowledgeWorkerActivation, clearWorkerSyncActivation } from './js/google-worker-auth.js';
+// Only coalesce work in this worker instance; persisted auth state/alarm own recovery.
+let brokerAuthFlight = null;
+function resumeBrokerAuth() {
+  if (brokerAuthFlight) return brokerAuthFlight;
+  if (!workerAuthConfigured()) return Promise.resolve({ ok: true });
+  brokerAuthFlight = (async () => {
+    try {
+      const result = await resumeWorkerAuthorization();
+      if (result.connected) {
+        await clearWorkerSyncActivation();
+        await completeWorkerAuthorization();
+        await connectGoogle(); // Commit backup account/authRequired settings before ack.
+        await acknowledgeWorkerActivation();
+      }
+      return { ok: true };
+    } catch {
+      // Credential state and alarm are durable; never log OAuth responses.
+      return { ok: false };
+    }
+  })().finally(() => { brokerAuthFlight = null; });
+  return brokerAuthFlight;
+}
+function isWorkerCallback(url) {
+  if (!workerAuthConfigured() || typeof url !== 'string') return false;
+  try {
+    const trusted = new URL(GOOGLE_WORKER_ORIGIN);
+    if (trusted.protocol !== 'https:' || trusted.pathname !== '/' || trusted.search || trusted.hash || trusted.username || trusted.password) return false;
+    const callback = new URL(url);
+    // Query/fragment contents are never consumed, persisted, or passed to auth.
+    return callback.origin === trusted.origin && callback.pathname === '/oauth/callback' && !callback.username && !callback.password;
+  } catch { return false; }
+}
+void resumeBrokerAuth();
+import { acceptPkceCallback, recoverPkceCallback, cancelPkceTab } from './js/google-pkce.js';
+chrome.tabs.onUpdated?.addListener((tabId, change, tab) => {
+  // Loading starts before the broker commits redemption; wait for the response.
+  if (change.status === 'complete' && isWorkerCallback(change.url ?? tab?.url)) void resumeBrokerAuth();
+  if (change.url?.startsWith('http://127.0.0.1:43821/pageclip/oauth2')) {
+    acceptPkceCallback(change.url, tabId).then(accepted => {
+      if (accepted) connectGoogle().catch(() => {});
+    }).catch(() => {});
+  }
+});
+chrome.tabs.onRemoved?.addListener(tabId => { cancelPkceTab(tabId).catch(() => {}); });
+if (chrome.tabs.onUpdated) recoverPkceCallback().then(accepted => {
+  if (accepted) connectGoogle().catch(() => {});
+}).catch(() => {});
 import { handleAiMessage } from './js/ai-service.js';
+// Content scripts bridge via messages; direct local storage includes credentials.
+chrome.storage.local?.setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' }).catch(() => {});
+// Retired sync code stays on disk for recovery/testing; never start it in the product.
+const SYNC_ALARM = 'pageclip-causal-sync';
+const SYNC_RETRY_ALARM = 'pageclip-causal-sync-retry';
+async function stopLegacySync() {
+  await Promise.all([chrome.alarms?.clear?.(SYNC_ALARM), chrome.alarms?.clear?.(SYNC_RETRY_ALARM)]);
+  const data = await loadData();
+  if (data._sync?.enabled) await mutate(current => { if (current._sync) current._sync.enabled = false; });
+}
+void stopLegacySync().catch(() => {});
 // MV3 Service Worker：严格无状态。
 // 不用任何全局变量保存业务数据，每次事件现用现读 chrome.storage.local，
 // 随时可能被系统终止也不会留下脏状态。
@@ -10,6 +72,7 @@ import {
   ensureDataInitialized,
   pruneRecycleBin,
   loadData,
+  mutate,
   updateSettings,
   applyTagRulesToBookmarks,
   pruneUrlTags,
@@ -247,6 +310,7 @@ async function syncReadingList(url, title) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
+  stopLegacySync().catch(() => {});
   configureSidePanel().catch(() => {});
   ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
   initI18n().catch(() => {});
@@ -257,6 +321,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onStartup.addListener(() => {
+  stopLegacySync().catch(() => {});
   configureSidePanel().catch(() => {});
   ensureDataInitialized().then(() => pruneRecycleBin()).catch(() => {});
   clearLegacyAutomaticBackupAlarm().catch(() => {});
@@ -266,6 +331,8 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.alarms?.onAlarm?.addListener((alarm) => {
+  if (alarm.name === WORKER_AUTH_ALARM) { void resumeBrokerAuth(); return; }
+  if (alarm.name === SYNC_ALARM || alarm.name === SYNC_RETRY_ALARM) { void stopLegacySync().catch(() => {}); return; }
   if (alarm.name === 'pageclip-prune-recycle') pruneRecycleBin().catch(() => {});
   if (alarm.name === AUTO_BACKUP_ALARM) runAutomaticBackup().then((result) => {
     if (result?.reason === 'authorization-required') {
@@ -323,7 +390,14 @@ chrome.action.onClicked.addListener(async () => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && (changes.pageclipOverlay || changes.bc_data?.newValue?.settings?.uiLocale !== changes.bc_data?.oldValue?.settings?.uiLocale)) {
+    chrome.storage.local.get('pageclipOverlay').then(async stored => {
+      const tabs = await chrome.tabs.query({});
+      await Promise.all(tabs.map(tab => chrome.tabs.sendMessage(tab.id, { type: 'pageclip:overlay-settings-changed', settings: stored.pageclipOverlay }).catch(() => {})));
+    }).catch(() => {});
+  }
   if (area !== 'local' || !changes.bc_data) return;
+  if (changes.bc_data.newValue?._sync?.enabled) void stopLegacySync().catch(() => {});
   if (changes.bc_data.newValue?.settings?.uiLocale !== changes.bc_data.oldValue?.settings?.uiLocale) createMenus().catch(() => {});
   const oldCloud = changes.bc_data.oldValue?.settings?.cloudBackup || {};
   const newCloud = changes.bc_data.newValue?.settings?.cloudBackup || {};
@@ -336,6 +410,34 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === 'pageclip:overlay-settings') {
+    if (sender.id !== chrome.runtime.id) return false;
+    (async () => {
+      if (message.action === 'set') {
+        const raw = message.settings || {};
+        const settings = {
+          overlayOpen: !!raw.overlayOpen, overlayMask: !!raw.overlayMask,
+          overlayPosition: raw.overlayPosition === 'left' ? 'left' : 'right',
+          overlayMode: raw.overlayMode === 'push' ? 'push' : 'overlay',
+          overlayWidth: Math.max(300, Math.min(680, Number(raw.overlayWidth) || 380)),
+        };
+        await chrome.storage.local.set({ pageclipOverlay: settings });
+        return { ok: true };
+      }
+      const stored = await chrome.storage.local.get(['pageclipOverlay', 'bc_data']);
+      return { ok: true, settings: stored.pageclipOverlay, uiLocale: stored.bc_data?.settings?.uiLocale };
+    })().then(sendResponse, () => sendResponse({ ok: false }));
+    return true;
+  }
+  if (message?.type === 'cloud-sync') {
+    // Only our own extension pages may change cloud state, not content scripts.
+    if (sender.id !== chrome.runtime.id || !['options.html', 'sidepanel.html'].some(page => sender.url?.split(/[?#]/)[0] === chrome.runtime.getURL(page))) return false;
+    // Explicit focus/callback continuation only: status reads may themselves write
+    // auth metadata, so resuming on status or storage changes would create loops.
+    if (message.action === 'auth-resume') resumeBrokerAuth().then(sendResponse);
+    else sendResponse({ ok: false, message: '双向同步已停用，请使用 Google Drive 自动备份。' });
+    return true;
+  }
   if (['ai-config-status', 'ai-config-save', 'ai-config-clear-key', 'ai-test', 'ai-models', 'ai-analyze', 'ai-cancel'].includes(message?.type)) {
     handleAiMessage(message, sender).then(sendResponse);
     return true;

@@ -58,6 +58,14 @@ foreach ($relative in $directories) {
   Copy-Item -LiteralPath $source -Destination (Join-Path $stage $relative) -Recurse -Force
 }
 
+# Failed Desktop OAuth feasibility code must not be offered as release support.
+$policyPath = Join-Path $stage 'js/google-auth-policy.js'
+$policy = [System.IO.File]::ReadAllText($policyPath)
+if (-not $policy.Contains('desktopExperiment: true')) { throw 'OAuth policy staging marker missing; review release policy' }
+$policy = $policy.Replace('desktopExperiment: true', 'desktopExperiment: false')
+[System.IO.File]::WriteAllText($policyPath, $policy, (New-Object System.Text.UTF8Encoding($false)))
+if (-not ([System.IO.File]::ReadAllText($policyPath)).Contains('desktopExperiment: false')) { throw 'Desktop OAuth experiment must be disabled in release' }
+
 # The public Web Store/production package must not carry the development-only manifest key.
 & node $keyTool strip (Join-Path $stage 'manifest.json')
 if ($LASTEXITCODE -ne 0) { throw 'Failed to strip manifest key from release stage' }
@@ -69,10 +77,25 @@ if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/ai-topics.js'))) { throw 
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/cloud-backup.js'))) { throw 'cloud-backup.js missing' }
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'js/crypto-backup.js'))) { throw 'crypto-backup.js missing' }
 
-$forbidden = Get-ChildItem -LiteralPath $stage -Recurse -File | Select-String -Pattern 'mock-google-token|GOCSPX-|client_secret|clientSecret|BEGIN (RSA|OPENSSH) PRIVATE KEY|accessToken\s*=' -AllMatches
-if ($forbidden) { throw 'Release package contains test credentials or private key material' }
+& node (Join-Path $PSScriptRoot 'check-release-secrets.mjs') $stage
+if ($LASTEXITCODE -ne 0) { throw 'Release package contains potential credential literals or private key material' }
 
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
+
+# Unpacked installs need the existing PUBLIC manifest key to keep the broker's allowlisted ID.
+# This key is public identity material, not a CRX signing/private key.
+if ($sourceManifest.key) {
+  $unpacked = Join-Path $releaseDir "$packageName-unpacked"
+  $unpackedZip = Join-Path $releaseDir "$packageName-unpacked.zip"
+  if (Test-Path -LiteralPath $unpacked) { Remove-Item -LiteralPath $unpacked -Recurse -Force }
+  New-Item -ItemType Directory -Path $unpacked -Force | Out-Null
+  Copy-Item -Path (Join-Path $stage '*') -Destination $unpacked -Recurse -Force
+  $unpackedManifest = Get-Content -LiteralPath (Join-Path $unpacked 'manifest.json') -Raw | ConvertFrom-Json
+  $unpackedManifest | Add-Member -NotePropertyName key -NotePropertyValue $sourceManifest.key
+  [System.IO.File]::WriteAllText((Join-Path $unpacked 'manifest.json'), ($unpackedManifest | ConvertTo-Json -Depth 100), (New-Object System.Text.UTF8Encoding($false)))
+  Compress-Archive -Path (Join-Path $unpacked '*') -DestinationPath $unpackedZip -Force
+  Write-Output "Created $unpackedZip (public manifest identity key retained)"
+}
 
 if ($ZipOnly) {
   Write-Output "Created $zip"

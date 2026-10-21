@@ -1,3 +1,5 @@
+> 当前云端功能为 Google Drive 自动加密备份，使用发布者托管 OAuth；双向同步已停用。
+
 # PageClip（Chrome 扩展）
 
 ### AI 默认网关与模型选择
@@ -6,6 +8,36 @@ AI 设置默认填入本机 Magpie 网关 `http://127.0.0.1:3425/v1`，不会覆
 
 
 在浏览器侧边栏中浏览、搜索、**完整管理** Chrome 自带书签，同时拥有一套独立的收藏体系（标签 / 备注 / 文件夹 / 置顶 / 时间）。纯原生 JS（Manifest V3），无需构建，加载即用。
+
+## 1.8.2 更新
+
+自动备份与统一授权、状态及时刷新、双向同步退役。详见 [1.8.2 发布说明](docs/releases/1.8.2.md)。
+
+## 发布者托管 OAuth
+
+新增 Cloudflare Worker + D1 的 Google Web OAuth 服务：统一 HTTPS 回调、后端加密保存刷新令牌、设备凭据交接和后台恢复。扩展仍直接访问 Drive，不转发业务数据或恢复密钥。普通用户不填写开发者凭据；发布者配置见 [部署与安全边界](docs/cloudflare-oauth.md) 及 [Worker 部署说明](oauth-worker/README.md)。服务已部署，Ego 真实账号授权已通过；其他浏览器和长期刷新仍需分别验收，Firefox 尚需项目级移植。
+
+## Google Drive 自动备份
+
+云端功能现简化为一处 Google Drive 自动加密备份，保留手动备份、恢复和恢复密钥管理。双向同步已从设置页及后台运行入口停用；已有本地同步历史和待同步记录保留，不删除云端日志。
+
+发布者 OAuth 服务已部署到 `https://oauth.soyonagasaki.com`；Ego 实际授权已成功。部署记录见 [部署记录](docs/oauth-deployment-soyonagasaki.md)。长期刷新和其他浏览器仍需分别验收，不能承诺永久免登录。
+
+## 当前 OAuth 迁移（原生认证）
+
+- `js/google-auth.js` 统一管理授权；`cloud-backup` 的 `getToken`、`clearToken`、`getAuthenticatedAccount`、`connectGoogle` 委托给它，备份与同步共用实际 userinfo 账号校验。
+- 只持久化授权状态，不保存 access token、refresh token 或 client secret；Chrome 管理 token 缓存与续期，每次需要时调用 `getAuthToken`，不伪造 `expiresAt`。401 仅清除被拒绝 token 后静默重试一次。
+- 后台始终静默，需要交互时暂停，由用户在设置页连接；无 implicit 回退、无虚构 PKCE 支持、无新增后端。真实浏览器验收仍待执行，见授权文档的手动 QA 清单。
+
+## 1.8.1 更新说明（历史版本）
+
+> 以下网页 OAuth 行为仅记录旧版本，已被当前原生-only 迁移移除，不代表当前兼容性或测试结果。
+
+- 修复 Ego 等 Chromium 浏览器提示 `The user turned off browser signin` 时无法连接 Google Drive 的问题，自动转用网页 OAuth 授权。
+- 网页授权按有效期在本机复用短期 Access Token，后台重启无需重复弹窗；到期、401 和退出时正确刷新或清理。
+- 网页授权显示所选 Google 账号，而非浏览器配置中的其他账号；后台自动备份仍保持无交互。
+- 新增 Ego 回退、令牌过期、后台重启、拒绝授权和账号读取回归测试；未更改备份加密格式。
+- 修复静默续授权在首个页面加载后提前中止的问题：允许最多 15 秒脚本跳转，并携带已连接账号的 login_hint；后台仍不弹窗。网页会话失效或需要重新同意权限时仍需手动连接，此方案不保证永久免登录。
 
 ## 1.8.0 更新说明
 
@@ -45,7 +77,7 @@ AI 设置默认填入本机 Magpie 网关 `http://127.0.0.1:3425/v1`，不会覆
 ## 1.6.12 更新说明
 
 - Google Drive 自动备份遇到需要重新授权时会暂停，并仅发送一条通知引导用户到设置页重新连接，避免后台反复失败或弹出意外登录窗口。
-- Brave 会在有效期内本机复用短期 Web OAuth Access Token；不会保存 Google Refresh Token 或 OAuth client secret。
+- 当时 Brave 会在有效期内本机复用短期 Web OAuth Access Token；该历史回退及持久化令牌行为已移除，当前不支持此连接方式。
 
 ## 1.6.10 更新说明
 
@@ -60,7 +92,7 @@ AI 设置默认填入本机 Magpie 网关 `http://127.0.0.1:3425/v1`，不会覆
 ## 1.6.8 更新说明
 
 - 修复 Chrome 书签长文件夹展开后内容被裁切的问题；长目录按层级自动分批加载。
-- 修复 Brave Web OAuth 重复授权时可能同时打开多个认证流程的问题。
+- 修复当时 Brave Web OAuth 重复授权时可能同时打开多个认证流程的问题（历史功能，当前已移除网页回退）。
 
 ## 1.6.7 更新说明
 
@@ -170,18 +202,24 @@ AI 设置还提供默认关闭的本地敏感词脱敏。每行一词，最多 5
 
 ## Google Drive OAuth 配置
 
-Google Drive 备份在 Chrome 使用 `chrome.identity.getAuthToken()`，在 Brave 回退到 `chrome.identity.launchWebAuthFlow()`；不要把 Desktop/Native App 的 custom URI 流程直接交给 Chrome 的 `getAuthToken()`。首次配置时：
+Google Drive 备份和双向同步统一使用 `js/google-auth.js` 的原生 `chrome.identity.getAuthToken()` 路径，不再调用网页 implicit 授权作为回退。Chrome 是目标支持环境，仍需真实账号验收；Brave / Ego / Firefox / Edge 尚无已验证原生 Google 能力，按不支持处理，不因 API 同名或存在 `launchWebAuthFlow` 就声称兼容。详见 [浏览器矩阵、官方依据与手动 QA](docs/google-auth.md)。首次配置时：
 
 1. 先在 `chrome://extensions` 加载本目录，复制页面显示的 **Extension ID**。当前仓库的固定 `key` 对应 ID 为 `mnapcpmijebakicgdflohgnjmndhlneg`。
 2. 在 Google Cloud 的 OAuth Client 页面创建 **Chrome Extension** 类型 client。
 3. 将上一步的 Extension ID 填入 **Item ID**，启用 Google Drive API，并将生成的 client ID 填入 `manifest.json` 的 `oauth2.client_id`。
 4. 修改 `manifest.json` 后，在 `chrome://extensions` 点击 PageClip 的「重新加载」，再回到设置页连接 Google。
 
-如果 Chrome 报错 `Custom URI scheme is not supported on Chrome apps` 或错误 400 `invalid_request`，先确认扩展 ID 和 Chrome Extension Client 的 Item ID。Chrome 正常、Brave 失败时，这是 Brave 的 `getAuthToken()` 兼容问题；PageClip 会回退到 Web OAuth 流程。Brave 使用的 Web OAuth Client（与 `manifest.json` 的 Chrome Extension Client 不同）必须额外允许回调地址 `https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/`。
+如果 Chrome 报错 `Custom URI scheme is not supported on Chrome apps` 或错误 400 `invalid_request`，先确认使用的是 Chrome Extension 客户端、扩展 ID 与 Item ID 匹配，而不是 Desktop/Web 客户端。原生身份不可用（包括 `The user turned off browser signin`）时明确报错并停止，不登记旧 `chromiumapp.org` Web 回调来恢复 implicit 流程。
 
-自动备份只会在 PageClip 内容变更约 10 秒后执行，并且始终使用无交互授权；它不会也不能在后台弹出 Google 登录或同意权限页面。Brave 会在 Access Token 尚未到期时短暂地仅在本机复用它，以避免 Service Worker 重启后重复认证；PageClip 不会保存 Google Refresh Token 或 OAuth client secret。如果 Google 返回 `interaction_required`、`login_required` 或 `consent_required`，PageClip 会暂停自动备份并仅发出一条系统通知。点击通知会打开设置页；再点击「重新连接 Google Drive」并完成可见授权，最后执行一次手动备份确认成功。自动备份开关会保留，并将在下一次内容变更时恢复执行。
+自动备份在 PageClip 内容变更约 10 秒后调度，并始终使用无交互授权；后台不会弹出 Google 登录或同意页面。管理器只保存授权状态，不持久保存 access token；Chrome 管理令牌有效期，API 不提供 `expiresAt`，每次需要时调用 `getAuthToken`。401 仅移除被拒绝 token 后静默重取并重试一次。需要交互时暂停，在支持的 Chrome 中由用户打开设置页重新连接，再执行手动备份确认。浏览器登录、Google 会话、权限撤销及组织策略都可能使授权失效，不能保证永久免登录。
 
 OAuth client secret 不能放入 Chrome 扩展或提交到 GitHub；扩展内只能使用公开的 client ID。如果 secret 曾经出现在聊天、日志或仓库中，应立即在 Google Cloud 撤销并重新生成。
+
+### Brave / Ego 等浏览器的兼容性变化
+
+旧版本网页回退已移除；当前这些浏览器不能据此连接 Google Drive，不提供改 Web 回调、Desktop PKCE 或嵌入 secret 的绕过办法。请保留现有本地数据和恢复密钥，可继续使用本地功能与导出；如需迁移到 Chrome，先备份数据并按恢复密钥流程操作，不要卸载原扩展来排错。
+
+相关回归入口：`node scripts/test-oauth.mjs`、`node scripts/test-cloud-backup.mjs`、`node scripts/test-auto-backup.mjs`、`node scripts/test-cloud-status.mjs`。本次仅改文档，未运行测试；旧回退测试通过不代表当前原生迁移或真实浏览器已验收。
 
 ## 开发者
 

@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const source = await readFile(new URL('../js/cloud-backup.js', import.meta.url), 'utf8');
 const executable = source
   .replace(/^import[^;]+;\s*/gm, '')
+  .replace(/^export\s*\{[^}]+\}\s*from[^;]+;\s*/gm, '')
   .replace(/^export\s+/gm, '')
   + '\n globalThis.__backupTest = { runAutomaticBackup, listBackups, uploadLatestBackup, getCloudBackupStatus };';
 
@@ -20,6 +21,9 @@ const calls = [];
 let nextId = 1;
 const identity = { async getAuthToken() { calls.push(['auth']); return { token: 'auto-token' }; }, getRedirectURL() { return 'https://mnapcpmijebakicgdflohgnjmndhlneg.chromiumapp.org/'; } };
 const context = {
+  getToken: async () => (await identity.getAuthToken()).token,
+  clearToken: async () => {},
+  authenticationStatus: async () => ({ status: 'ready' }),
   chrome: { identity, runtime: { id: 'mnapcpmijebakicgdflohgnjmndhlneg' } },
   navigator: { userAgentData: { brands: [] }, userAgent: '' },
   URL, URLSearchParams, TextEncoder, console,
@@ -74,6 +78,8 @@ const authorizationData = {
 };
 const authorizationCalls = [];
 const authorizationContext = {
+  getToken: async () => { authorizationCalls.push(['auth']); throw Object.assign(new Error('Google 授权需要重新连接'), { kind: 'auth' }); },
+  authenticationStatus: async () => ({ status: 'reauthorize' }),
   chrome: {
     identity: {
       async getAuthToken() {

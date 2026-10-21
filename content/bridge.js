@@ -74,8 +74,8 @@
   function ct(key, variables = {}) { return String(i18nMessages[key] || key).replace(/\$([A-Z0-9_]+)\$/g, (_, name) => variables[name] ?? ''); }
   async function loadContentI18n() {
     try {
-      const stored = await chrome.storage.local.get('bc_data');
-      const preference = stored.bc_data?.settings?.uiLocale;
+      const stored = await chrome.runtime.sendMessage({ type: 'pageclip:overlay-settings', action: 'get' });
+      const preference = stored?.uiLocale;
       i18nLocale = preference === 'en' ? 'en' : preference === 'zh_CN' ? 'zh_CN' : /^zh/i.test(chrome.i18n?.getUILanguage?.() || navigator.language || '') ? 'zh_CN' : 'en';
       const response = await chrome.runtime.sendMessage({ type: 'get-i18n-messages', locale: i18nLocale });
       if (response?.ok) { i18nMessages = response.messages || {}; toggleLogo.alt = ct('app.name'); toggle.title = ct('content.toggleTitle'); iframe.title = ct('content.iframeTitle'); }
@@ -112,7 +112,7 @@
 
   function setOpen(open) {
     applySettings({ overlayOpen: !!open });
-    chrome.storage.local.set({ pageclipOverlay: { ...settings, overlayOpen: !!open } }).catch(() => {});
+    chrome.runtime.sendMessage({ type: 'pageclip:overlay-settings', action: 'set', settings: { ...settings, overlayOpen: !!open } }).catch(() => {});
   }
 
   function showMenu(x, y) {
@@ -227,7 +227,7 @@
   resize.addEventListener('pointerup', () => {
     if (!dragStart) return;
     dragStart = null;
-    chrome.storage.local.set({ pageclipOverlay: settings }).catch(() => {});
+    chrome.runtime.sendMessage({ type: 'pageclip:overlay-settings', action: 'set', settings }).catch(() => {});
   });
 
   chrome.runtime.onMessage.addListener((message) => {
@@ -235,9 +235,8 @@
     if (message?.type === 'pageclip:open') setOpen(true);
     if (message?.type === 'pageclip:close') setOpen(false);
   });
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.bc_data?.newValue?.settings?.uiLocale !== changes.bc_data?.oldValue?.settings?.uiLocale) void loadContentI18n();
-    if (area === 'local' && changes.pageclipOverlay) applySettings(changes.pageclipOverlay.newValue);
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type === 'pageclip:overlay-settings-changed') { applySettings(message.settings); void loadContentI18n(); }
   });
-  chrome.storage.local.get('pageclipOverlay').then((result) => applySettings(result.pageclipOverlay || settings)).catch(() => applySettings(settings));
+  chrome.runtime.sendMessage({ type: 'pageclip:overlay-settings', action: 'get' }).then((result) => applySettings(result?.settings || settings)).catch(() => applySettings(settings));
 })();

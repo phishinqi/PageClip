@@ -190,6 +190,13 @@ export async function importEncryptedRecoveryKey(file, password) {
   const wrappingKey = await derivePasswordKey(password, fromBase64(envelope.salt), Number(envelope.iterations) || KDF_ITERATIONS);
   const raw = await decryptBytes(wrappingKey, envelope.iv, envelope.encryptedKey);
   if (raw.length !== 32) throw new Error('恢复密钥长度不正确');
+  const sync = (await loadData())._sync;
+  if (sync?.enabled) throw new Error('请先暂停双向同步，再导入恢复密钥');
+  const binding = sync?.keyVerified ? sync.keyFingerprint : null;
+  if (binding) {
+    const fingerprint = [...new Uint8Array(await webCrypto().subtle.digest('SHA-256', raw))].map(v => v.toString(16).padStart(2, '0')).join('');
+    if (binding !== fingerprint) throw new Error('此设备已有同步空间绑定，不能替换为不同恢复密钥；请使用独立扩展配置迁移');
+  }
   const key = await webCrypto().subtle.importKey('raw', raw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
   await writeDeviceKey(key);
   return { imported: true, keyId: DEVICE_KEY_ID };

@@ -1,4 +1,7 @@
 # Local/editor/runtime
+.tmp/
+.claude/
+docs/oauth-live-result.json
 .zcode/
 .idea/
 node_modules/
@@ -16,3 +19,7 @@ gui-test-screenshots/
 .env.*
 *.pem
 *.key
+.dev.vars
+.dev.vars.*
+.wrangler/
+oauth-worker/wrangler.toml

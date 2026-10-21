@@ -4,7 +4,8 @@ import vm from 'node:vm';
 
 const source = await readFile(new URL('../js/store.js', import.meta.url), 'utf8');
 // 只测试数据锁；import 的依赖在这里用不到，去掉后才能在 vm 脚本环境里执行。
-const executable = source.replace(/^import[^;]+;\s*/gm, '').replace(/^export\s+/gm, '') + '\n globalThis.__storeTest = { mutate, withDataLock, STORAGE_KEY };';
+const modelSource = await readFile(new URL('../js/sync-model.js', import.meta.url), 'utf8');
+const executable = modelSource.replace(/^export\s+/gm, '') + '\n' + source.replace(/^import[^;]+;\s*/gm, '').replace(/^export\s+/gm, '') + '\n globalThis.__storeTest = { mutate, withDataLock, STORAGE_KEY };';
 const saved = { bc_data: { n: 0, changes: [] } };
 const context = {
   URL,

@@ -7,6 +7,9 @@ import {
   planRuleTags, collectionFolderName, collectionRuleEntries, taggedUrlKeys, renameTagInRules, removeTagFromRules,
 } from './tag-model.js';
 
+// Retired product sync is paused by the background; disabled histories stay unchanged.
+import { capture } from './sync-model.js';
+
 export const STORAGE_KEY = 'bc_data';
 export const UNCATEGORIZED_ID = 'f_uncategorized';
 const SCHEMA_VERSION = 3;
@@ -155,7 +158,18 @@ export async function ensureDataInitialized() {
     const railWidth = Number(base.settings.folderRailWidth);
     base.settings.folderRailWidth = Number.isFinite(railWidth) ? Math.round(Math.min(360, Math.max(120, railWidth))) : 180;
   }
+    if (raw?._sync) {
+      base._sync = cloneJson(raw._sync);
+      // A partially downloaded folder tree may legitimately have a missing
+      // parent. Do not turn normalization into an unsolicited local edit.
+      if (raw.schema === SCHEMA_VERSION && raw._sync.protocol === 1) {
+        for (const field of ['folders', 'items', 'quickAccess', 'inbox', 'urlTags']) {
+          if (raw[field]) base[field] = cloneJson(raw[field]);
+        }
+      }
+    }
     base.schema = SCHEMA_VERSION;
+    if (base._sync?.enabled) capture(base);
     await chrome.storage.local.set({ [STORAGE_KEY]: base });
     return base;
   });
@@ -166,6 +180,7 @@ export async function loadData() {
 }
 
 export async function saveData(data) {
+  if (data._sync?.enabled) capture(data);
   await chrome.storage.local.set({ [STORAGE_KEY]: data });
 }
 
@@ -189,7 +204,7 @@ export function isCollectableUrl(url) {
 }
 
 export function genId(prefix) {
-  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}_${crypto.randomUUID()}`;
 }
 
 // ———— 静默收藏（快捷键 / 顶栏 ＋ 按钮共用） ————
